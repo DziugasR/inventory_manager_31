@@ -1,0 +1,9 @@
+# backend
+sqlalchemy==2.0.39
+requests==2.32.3
+
+# frontend
+PyQt5==5.15.11
+
+# auxiliary
+faker==37.0.0
