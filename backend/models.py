@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 # Ensure SQLAlchemy’s Base works with ABC
 Base = declarative_base()
 
-
 class Component(Base):
     __tablename__ = "components"
 
@@ -14,6 +13,8 @@ class Component(Base):
     component_type = Column(String, nullable=False)
     value = Column(String, nullable=False)
     quantity = Column(Integer, nullable=False)
+    purchase_link = Column(String, nullable=True)
+    datasheet_link = Column(String, nullable=True)
 
     __mapper_args__ = {"polymorphic_on": component_type, "polymorphic_identity": "component"}
 

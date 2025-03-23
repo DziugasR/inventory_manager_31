@@ -3,6 +3,10 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QWidget, QMessageBox, QDialog, QFormLayout, QLineEdit,
     QComboBox, QSpinBox, QDialogButtonBox, QLabel, QHBoxLayout, QInputDialog
 )
+
+from PyQt5.QtGui import QColor, QDesktopServices
+from PyQt5.QtCore import QUrl, Qt
+
 from backend.inventory import get_all_components, add_component, remove_component_by_part_number, remove_component_quantity
 
 class InventoryUI(QMainWindow):
@@ -46,11 +50,14 @@ class InventoryUI(QMainWindow):
         # Detect row selection to enable/disable the remove button
         self.table.selectionModel().selectionChanged.connect(self.update_remove_button_state)
 
-
     def load_data(self):
         """ Load inventory data into the table. """
         components = get_all_components()
         self.table.setRowCount(len(components))
+        self.table.setColumnCount(7)  # Added two columns for links
+        self.table.setHorizontalHeaderLabels([
+            "Part Number", "Name", "Type", "Value", "Quantity", "Purchase Link", "Datasheet"
+        ])
 
         for row, component in enumerate(components):
             self.table.setItem(row, 0, QTableWidgetItem(component.part_number or ""))
@@ -58,6 +65,33 @@ class InventoryUI(QMainWindow):
             self.table.setItem(row, 2, QTableWidgetItem(component.component_type))
             self.table.setItem(row, 3, QTableWidgetItem(component.value))
             self.table.setItem(row, 4, QTableWidgetItem(str(component.quantity)))
+
+            # Clickable Purchase Link
+            if component.purchase_link:
+                purchase_item = QTableWidgetItem("Link")
+                purchase_item.setForeground(QColor("blue"))  # Set text color to blue
+                purchase_item.setTextAlignment(Qt.AlignCenter)  # Center the text
+                purchase_item.setData(Qt.UserRole, QUrl(component.purchase_link))  # Store the URL
+                self.table.setItem(row, 5, purchase_item)
+
+                # Clickable Datasheet Link
+            if component.datasheet_link:
+                datasheet_item = QTableWidgetItem("Link")
+                datasheet_item.setForeground(QColor("blue"))  # Set text color to blue
+                datasheet_item.setTextAlignment(Qt.AlignCenter)
+                datasheet_item.setData(Qt.UserRole, QUrl(component.datasheet_link))
+                self.table.setItem(row, 6, datasheet_item)
+
+            self.table.cellClicked.connect(self.open_link) # Handle clicks
+
+    def open_link(self, row, column):
+        """ Opens the link when a user clicks the link column """
+        if column in [5, 6]:  # Only trigger for link columns (Purchase Link & Datasheet)
+            item = self.table.item(row, column)
+            if item:
+                link = item.data(Qt.UserRole)  # Retrieve stored URL
+                if link and isinstance(link, QUrl):  # Ensure it's a valid URL
+                    QDesktopServices.openUrl(link)
 
     def update_remove_button_state(self):
         """ Enable the remove button only if a row is selected. """
@@ -165,15 +199,22 @@ class AddComponentDialog(QDialog):
         self.name_input = QLineEdit(self)
         self.form_layout.addRow("Name:", self.name_input)
 
+        self.dynamic_fields = {}  # Dictionary to hold dynamically changing input fields
+        self.update_fields()  # Initialize with the first component type
+
+        self.layout.addLayout(self.form_layout)
+
         self.quantity_input = QSpinBox(self)
         self.quantity_input.setRange(1, 10000)  # Allow selecting up to 10,000 units
         self.quantity_input.setValue(1)  # Default to 1
         self.form_layout.addRow("Quantity:", self.quantity_input)
 
-        self.dynamic_fields = {}  # Dictionary to hold dynamically changing input fields
-        self.update_fields()  # Initialize with the first component type
+        self.purchase_link_input = QLineEdit(self)
+        self.form_layout.addRow("Purchase Link:", self.purchase_link_input)
 
-        self.layout.addLayout(self.form_layout)
+        # Datasheet Link
+        self.datasheet_link_input = QLineEdit(self)
+        self.form_layout.addRow("Datasheet Link:", self.datasheet_link_input)
 
         # OK & Cancel buttons
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -185,22 +226,28 @@ class AddComponentDialog(QDialog):
 
     def update_fields(self):
         """ Update input fields dynamically based on selected component type. """
-        # Remove existing dynamic fields
+
+        # 🔹 Remove existing dynamic fields without affecting other fields
         for label, input_field in self.dynamic_fields.values():
             self.form_layout.removeRow(label)
 
         self.dynamic_fields.clear()
 
-        # Get the selected component type
+        # 🔹 Get selected component type and its fields
         selected_type = self.type_input.currentText()
         fields = self.component_types.get(selected_type, [])
 
-        # Create new dynamic fields
+        # 🔹 Find the correct position (right after Name field)
+        name_field_index = 2  # "Type" is row 0, "Part Number" is row 1, "Name" is row 2
+        insert_position = name_field_index + 1  # Add dynamic fields right after Name
+
+        # 🔹 Create and insert new dynamic fields at the correct position
         for field_name in fields:
             label = QLabel(field_name)
             input_field = QLineEdit(self)
-            self.form_layout.addRow(label, input_field)
+            self.form_layout.insertRow(insert_position, label, input_field)
             self.dynamic_fields[field_name] = (label, input_field)
+            insert_position += 1  # Move index forward for the next field
 
     def add_component(self):
         """ Collects input data and adds the component to the database """
@@ -208,6 +255,8 @@ class AddComponentDialog(QDialog):
         name = self.name_input.text().strip() or None
         comp_type = self.type_input.currentText().strip()
         quantity = self.quantity_input.value()  # Default quantity
+        purchase_link = self.purchase_link_input.text().strip() or None
+        datasheet_link = self.datasheet_link_input.text().strip() or None
 
         # Collect dynamic input values
         values = []
@@ -217,7 +266,7 @@ class AddComponentDialog(QDialog):
 
         value_str = ", ".join(values)  # Combine values into a single string
 
-        success = add_component(part_number, name, comp_type, value_str, quantity, parent=self)
+        success = add_component(part_number, name, comp_type, value_str, quantity, purchase_link, datasheet_link, parent=self)
 
         if success:
             self.accept()  # Close the popup if adding is successful
