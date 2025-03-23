@@ -16,7 +16,10 @@ class Component(Base):
     purchase_link = Column(String, nullable=True)
     datasheet_link = Column(String, nullable=True)
 
-    __mapper_args__ = {"polymorphic_on": component_type, "polymorphic_identity": "component"}
+    __mapper_args__ = {
+        "polymorphic_on": component_type,  # 🔹 Ensure polymorphic mapping is correct
+        "polymorphic_identity": "component"
+    }
 
     @abstractmethod
     def get_specifications(self):

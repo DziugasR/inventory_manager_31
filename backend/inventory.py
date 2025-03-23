@@ -1,18 +1,15 @@
-
 from PyQt5.QtWidgets import QMessageBox
 from backend.models import Component
 from backend.database import get_session
 from backend.component_factory import ComponentFactory
 
 def add_component(part_number, name, component_type, value, quantity, purchase_link, datasheet_link, parent=None):
-    """ Adds a new component using the Factory Pattern. """
-    if not isinstance(quantity, int) or quantity <= 0:
-        QMessageBox.warning(parent, "Invalid Quantity", "Quantity must be a positive number.")
-        return False
-
     session = get_session()
     try:
-        # ✅ Use the Factory Pattern to create the component
+        component_type = component_type.lower()
+        if session.query(Component).filter_by(part_number=part_number).first():
+            # Duplicate found; warn and return False.
+            return False
         component = ComponentFactory.create_component(
             component_type,
             part_number=part_number,
@@ -22,16 +19,15 @@ def add_component(part_number, name, component_type, value, quantity, purchase_l
             purchase_link=purchase_link,
             datasheet_link=datasheet_link
         )
-
         session.add(component)
         session.commit()
         return True
     except Exception as e:
         session.rollback()
-        QMessageBox.warning(parent, "Database Error", f"Error while adding component: {e}")
         return False
     finally:
         session.close()
+
 
 def remove_component_quantity(part_number, quantity, parent=None):
     """ Removes a specified quantity of the component from the database. """

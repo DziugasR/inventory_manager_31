@@ -8,40 +8,41 @@ from backend.models import (
 
 class ComponentFactory:
     _component_types = {
-        "Resistor": Resistor,
-        "Capacitor": Capacitor,
-        "Inductor": Inductor,
-        "Diode": Diode,
-        "Transistor": Transistor,
-        "LED": LED,
-        "Relay": Relay,
-        "Op-Amp": OpAmp,
-        "Voltage Regulator": VoltageRegulator,
-        "Microcontroller": Microcontroller,
-        "IC": IC,
-        "MOSFET": MOSFET,
-        "Photodiode": Photodiode,
-        "Switch": Switch,
-        "Transformer": Transformer,
-        "Speaker": Speaker,
-        "Motor": Motor,
-        "Heat Sink": HeatSink,
-        "Connector": Connector,
-        "Crystal Oscillator": CrystalOscillator,
-        "Buzzer": Buzzer,
-        "Thermistor": Thermistor,
-        "Varistor": Varistor,
-        "Fuse": Fuse,
-        "Sensor": Sensor,
-        "Antenna": Antenna,
-        "Breadboard": Breadboard,
-        "Wire": Wire,
-        "Battery": Battery,
-        "Power Supply": PowerSupply
+        "resistor": Resistor,
+        "capacitor": Capacitor,
+        "inductor": Inductor,
+        "diode": Diode,
+        "transistor": Transistor,
+        "lED": LED,
+        "relay": Relay,
+        "op-Amp": OpAmp,
+        "voltage Regulator": VoltageRegulator,
+        "microcontroller": Microcontroller,
+        "iC": IC,
+        "mOSFET": MOSFET,
+        "photodiode": Photodiode,
+        "switch": Switch,
+        "transformer": Transformer,
+        "speaker": Speaker,
+        "motor": Motor,
+        "heat Sink": HeatSink,
+        "connector": Connector,
+        "crystal Oscillator": CrystalOscillator,
+        "buzzer": Buzzer,
+        "thermistor": Thermistor,
+        "varistor": Varistor,
+        "fuse": Fuse,
+        "sensor": Sensor,
+        "antenna": Antenna,
+        "breadboard": Breadboard,
+        "wire": Wire,
+        "battery": Battery,
+        "power Supply": PowerSupply
     }
 
     @staticmethod
     def create_component(component_type, **kwargs):
+        component_type = component_type.lower()
         if component_type in ComponentFactory._component_types:
             return ComponentFactory._component_types[component_type](**kwargs)
         else:

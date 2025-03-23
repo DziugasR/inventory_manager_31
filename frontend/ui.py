@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
 )
 
 from PyQt5.QtGui import QColor, QDesktopServices
-from PyQt5.QtCore import QUrl, Qt
+from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
 from backend.inventory import get_all_components, add_component, remove_component_by_part_number, remove_component_quantity
 
