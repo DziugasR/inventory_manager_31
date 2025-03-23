@@ -82,14 +82,19 @@ class InventoryUI(QMainWindow):
                 datasheet_item.setData(Qt.UserRole, QUrl(component.datasheet_link))
                 self.table.setItem(row, 6, datasheet_item)
 
+            try:
+                self.table.cellClicked.disconnect(self.open_link)
+            except TypeError:
+                pass  # No existing connection
+
             self.table.cellClicked.connect(self.open_link) # Handle clicks
 
     def open_link(self, row, column):
-        """ Opens the link when a user clicks the link column """
-        if column in [5, 6]:  # Only trigger for link columns (Purchase Link & Datasheet)
+        """ Opens the link only once when clicked. """
+        if column in [5, 6]:  # Only trigger for Purchase & Datasheet link columns
             item = self.table.item(row, column)
             if item:
-                link = item.data(Qt.UserRole)  # Retrieve stored URL
+                link = item.data(Qt.UserRole)  # Retrieve the stored URL
                 if link and isinstance(link, QUrl):  # Ensure it's a valid URL
                     QDesktopServices.openUrl(link)
 
