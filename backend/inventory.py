@@ -42,6 +42,8 @@ def remove_component_quantity(part_number, quantity, parent=None):
         if component:
             if component.quantity >= quantity:
                 component.quantity -= quantity
+                if component.quantity == 0:  # If no stock left, remove the item
+                    session.delete(component)
                 session.commit()
                 return True
             else:
@@ -58,7 +60,7 @@ def remove_component_quantity(part_number, quantity, parent=None):
         session.close()
 
 def remove_component_by_part_number(part_number, parent=None):
-    """ Removes a component by part number. """
+    """ Removes a component from the database using the part number. """
     session = get_session()
     try:
         component = session.query(Component).filter_by(part_number=part_number).first()
@@ -109,5 +111,6 @@ def update_component_quantity(component_id, new_quantity, parent=None):
         return False
     finally:
         session.close()
+
 
 

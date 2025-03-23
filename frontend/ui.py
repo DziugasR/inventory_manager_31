@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
     QVBoxLayout, QWidget, QMessageBox, QDialog, QFormLayout, QLineEdit,
-    QComboBox, QSpinBox, QDialogButtonBox, QLabel
+    QComboBox, QSpinBox, QDialogButtonBox, QLabel, QHBoxLayout, QInputDialog
 )
-from backend.inventory import get_all_components, add_component
+from backend.inventory import get_all_components, add_component, remove_component_by_part_number, remove_component_quantity
 
 class InventoryUI(QMainWindow):
     def __init__(self):
@@ -20,10 +20,21 @@ class InventoryUI(QMainWindow):
         self.table.setHorizontalHeaderLabels(["Part Number", "Name", "Type", "Value", "Quantity"])
         self.layout.addWidget(self.table)
 
-        # Button to open popup for adding components
+        # Button layout
+        button_layout = QHBoxLayout()
+
+        # 🔹 "Add Component" Button
         self.add_button = QPushButton("Add Component", self)
         self.add_button.clicked.connect(self.open_add_component_dialog)
-        self.layout.addWidget(self.add_button)
+        button_layout.addWidget(self.add_button)
+
+        # 🔹 "Remove Component" Button
+        self.remove_button = QPushButton("Remove Component", self)
+        self.remove_button.setEnabled(False)  # Initially disabled
+        self.remove_button.clicked.connect(self.remove_selected_component)
+        button_layout.addWidget(self.remove_button)
+
+        self.layout.addLayout(button_layout)
 
         # Set the main layout
         container = QWidget()
@@ -31,6 +42,10 @@ class InventoryUI(QMainWindow):
         self.setCentralWidget(container)
 
         self.load_data()  # Load inventory data on startup
+
+        # Detect row selection to enable/disable the remove button
+        self.table.selectionModel().selectionChanged.connect(self.update_remove_button_state)
+
 
     def load_data(self):
         """ Load inventory data into the table. """
@@ -44,12 +59,57 @@ class InventoryUI(QMainWindow):
             self.table.setItem(row, 3, QTableWidgetItem(component.value))
             self.table.setItem(row, 4, QTableWidgetItem(str(component.quantity)))
 
+    def update_remove_button_state(self):
+        """ Enable the remove button only if a row is selected. """
+        if self.table.selectionModel().hasSelection():
+            self.remove_button.setEnabled(True)
+        else:
+            self.remove_button.setEnabled(False)
+
     def open_add_component_dialog(self):
         """ Opens the Add Component popup window. """
         dialog = AddComponentDialog(self)
         if dialog.exec_():  # If the dialog is successfully closed with "OK"
             self.load_data()  # Refresh the table with new data
 
+    def remove_selected_component(self):
+        """ Removes a selected quantity of the component from the database. """
+        selected_row = self.table.currentRow()
+        if selected_row < 0:
+            QMessageBox.warning(self, "Selection Error", "Please select a component to remove.")
+            return
+
+        part_number_item = self.table.item(selected_row, 0)  # Get part number
+        quantity_item = self.table.item(selected_row, 4)  # Get current quantity
+
+        if not part_number_item or not quantity_item:
+            QMessageBox.warning(self, "Error", "Could not retrieve the selected component.")
+            return
+
+        part_number = part_number_item.text()
+        current_quantity = int(quantity_item.text())  # Get existing quantity
+
+        # Get user input for how many to remove
+        quantity_to_remove, ok = QInputDialog.getInt(self, "Remove Quantity",
+                                                     f"Available: {current_quantity} units\nEnter quantity to remove:",
+                                                     min=1, max=current_quantity)
+
+        if not ok or quantity_to_remove <= 0:
+            return  # User canceled or entered an invalid value
+
+        # Confirm deletion
+        confirm = QMessageBox.question(
+            self, "Confirm Deletion",
+            f"Are you sure you want to remove {quantity_to_remove} units of '{part_number}'?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
+
+        if confirm == QMessageBox.Yes:
+            success = remove_component_quantity(part_number, quantity_to_remove, parent=self)
+            if success:
+                self.load_data()  # Refresh table after removal
+            else:
+                QMessageBox.warning(self, "Database Error", "Failed to remove the component.")
 
 class AddComponentDialog(QDialog):
     """ Popup dialog for adding a new component """
@@ -105,6 +165,11 @@ class AddComponentDialog(QDialog):
         self.name_input = QLineEdit(self)
         self.form_layout.addRow("Name:", self.name_input)
 
+        self.quantity_input = QSpinBox(self)
+        self.quantity_input.setRange(1, 10000)  # Allow selecting up to 10,000 units
+        self.quantity_input.setValue(1)  # Default to 1
+        self.form_layout.addRow("Quantity:", self.quantity_input)
+
         self.dynamic_fields = {}  # Dictionary to hold dynamically changing input fields
         self.update_fields()  # Initialize with the first component type
 
@@ -142,7 +207,7 @@ class AddComponentDialog(QDialog):
         part_number = self.part_number_input.text().strip() or None
         name = self.name_input.text().strip() or None
         comp_type = self.type_input.currentText().strip()
-        quantity = 1  # Default quantity
+        quantity = self.quantity_input.value()  # Default quantity
 
         # Collect dynamic input values
         values = []
