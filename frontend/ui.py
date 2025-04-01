@@ -16,31 +16,33 @@ class InventoryUI(QMainWindow):
         self.setWindowTitle("Electronics Inventory Manager")
         self.setGeometry(100, 100, 800, 600)
 
+        # Main vertical layout
         self.layout = QVBoxLayout()
 
-        # Table to display components
-        self.table = QTableWidget(self)
-        self.table.setColumnCount(5)  # No "ID" column
-        self.table.setHorizontalHeaderLabels(["Part Number", "Name", "Type", "Value", "Quantity"])
-        self.layout.addWidget(self.table)
-
-        # Button layout
+        # 🔹 Button layout (TOP)
         button_layout = QHBoxLayout()
 
-        # 🔹 "Add Component" Button
         self.add_button = QPushButton("Add Component", self)
         self.add_button.clicked.connect(self.open_add_component_dialog)
         button_layout.addWidget(self.add_button)
 
-        # 🔹 "Remove Component" Button
         self.remove_button = QPushButton("Remove Component", self)
         self.remove_button.setEnabled(False)  # Initially disabled
         self.remove_button.clicked.connect(self.remove_selected_component)
         button_layout.addWidget(self.remove_button)
 
+        # Add button layout FIRST
         self.layout.addLayout(button_layout)
 
-        # Set the main layout
+        # 🔹 Table (BOTTOM)
+        self.table = QTableWidget(self)
+        self.table.setColumnCount(7)  # Added columns for links
+        self.table.setHorizontalHeaderLabels([
+            "Part Number", "Name", "Type", "Value", "Quantity", "Purchase Link", "Datasheet"
+        ])
+        self.layout.addWidget(self.table)  # Table BELOW the buttons
+
+        # Set the layout to the main container
         container = QWidget()
         container.setLayout(self.layout)
         self.setCentralWidget(container)
