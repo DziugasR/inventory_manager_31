@@ -28,7 +28,6 @@ def add_component(part_number, name, component_type, value, quantity, purchase_l
     finally:
         session.close()
 
-
 def remove_component_quantity(part_number, quantity, parent=None):
     """ Removes a specified quantity of the component from the database. """
     if not isinstance(quantity, int) or quantity <= 0:
@@ -111,5 +110,23 @@ def update_component_quantity(component_id, new_quantity, parent=None):
     finally:
         session.close()
 
+def export_components_to_txt(file_path):
+    """ Export all components from database to a TXT file. """
+    session = get_session()
+    components = session.query(Component).all()
+    session.close()
 
+    try:
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write("Part Number | Name | Type | Value | Quantity\n")
+            file.write("-" * 50 + "\n")
+
+            for component in components:
+                file.write(f"{component.part_number or 'N/A'} | {component.name or 'N/A'} | "
+                           f"{component.component_type} | {component.value} | {component.quantity}\n")
+
+        return True  # Success
+    except Exception as e:
+        print(f"Error exporting to TXT: {e}")
+        return False  # Failure
 

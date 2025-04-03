@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
     QVBoxLayout, QWidget, QMessageBox, QDialog, QFormLayout, QLineEdit,
-    QComboBox, QSpinBox, QDialogButtonBox, QLabel, QHBoxLayout, QInputDialog
+    QComboBox, QSpinBox, QDialogButtonBox, QLabel, QHBoxLayout, QInputDialog, QFileDialog
 )
 
 from PyQt5.QtGui import QColor, QDesktopServices
@@ -30,6 +30,10 @@ class InventoryUI(QMainWindow):
         self.remove_button.setEnabled(False)  # Initially disabled
         self.remove_button.clicked.connect(self.remove_selected_component)
         button_layout.addWidget(self.remove_button)
+
+        self.export_button = QPushButton("Export to TXT")
+        self.export_button.clicked.connect(self.export_to_txt)
+        self.layout.addWidget(self.export_button)
 
         # Add button layout FIRST
         self.layout.addLayout(button_layout)
@@ -151,6 +155,18 @@ class InventoryUI(QMainWindow):
                 self.load_data()  # Refresh table after removal
             else:
                 QMessageBox.warning(self, "Database Error", "Failed to remove the component.")
+
+    def export_to_txt(self):
+        """ Export components from database to a TXT file. """
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "Text Files (*.txt)")
+
+        if file_path:  # If user selected a file path
+            from backend.inventory import export_components_to_txt
+            success = export_components_to_txt(file_path)
+            if success:
+                QMessageBox.information(self, "Export Successful", f"Data exported to {file_path}")
+            else:
+                QMessageBox.warning(self, "Export Failed", "Could not export data.")
 
 class AddComponentDialog(QDialog):
     """ Popup dialog for adding a new component """
