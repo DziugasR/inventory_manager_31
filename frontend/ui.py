@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QColor, QDesktopServices
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
-from backend.inventory import get_all_components, add_component, remove_component_by_part_number, remove_component_quantity
+from backend.inventory import get_all_components, add_component, remove_component_by_part_number, remove_component_quantity, import_components_from_txt
 
 class InventoryUI(QMainWindow):
     def __init__(self):
@@ -34,6 +34,10 @@ class InventoryUI(QMainWindow):
         self.export_button = QPushButton("Export to TXT")
         self.export_button.clicked.connect(self.export_to_txt)
         self.layout.addWidget(self.export_button)
+
+        self.import_button = QPushButton("Import from TXT")
+        self.import_button.clicked.connect(self.import_from_txt)
+        self.layout.addWidget(self.import_button)
 
         # Add button layout FIRST
         self.layout.addLayout(button_layout)
@@ -167,6 +171,18 @@ class InventoryUI(QMainWindow):
                 QMessageBox.information(self, "Export Successful", f"Data exported to {file_path}")
             else:
                 QMessageBox.warning(self, "Export Failed", "Could not export data.")
+
+    def import_from_txt(self):
+        """ Import components from a TXT file into the database. """
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "Text Files (*.txt)")
+
+        if file_path:  # If user selected a file
+            success, message = import_components_from_txt(file_path)
+            if success:
+                QMessageBox.information(self, "Import Successful", message)
+                self.load_data()  # Refresh table
+            else:
+                QMessageBox.warning(self, "Import Failed", message)
 
 class AddComponentDialog(QDialog):
     """ Popup dialog for adding a new component """
