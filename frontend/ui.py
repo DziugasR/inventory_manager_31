@@ -54,7 +54,7 @@ class InventoryUI(QMainWindow):
         container = QWidget()
         container.setLayout(self.layout)
         self.setCentralWidget(container)
-
+        self.table.setSortingEnabled(True)
         self.load_data()  # Load inventory data on startup
 
         # Detect row selection to enable/disable the remove button
@@ -227,6 +227,39 @@ class AddComponentDialog(QDialog):
             "Power Supply": ["Output Voltage (V)", "Output Current (A)"]
         }
 
+        self.ui_to_backend_name_mapping = {
+            "Resistor": "resistor",
+            "Capacitor": "capacitor",
+            "Inductor": "inductor",
+            "Diode": "diode",
+            "Transistor": "transistor",
+            "LED": "led",
+            "Relay": "relay",
+            "Op-Amp": "op_amp",
+            "Voltage Regulator": "voltage_regulator",
+            "Microcontroller": "microcontroller",
+            "IC": "ic",
+            "MOSFET": "mosfet",
+            "Photodiode": "photodiode",
+            "Switch": "switch",
+            "Transformer": "transformer",
+            "Speaker": "speaker",
+            "Motor": "motor",
+            "Heat Sink": "heat_sink",
+            "Connector": "connector",
+            "Crystal Oscillator": "crystal_oscillator",
+            "Buzzer": "buzzer",
+            "Thermistor": "thermistor",
+            "Varistor": "varistor",
+            "Fuse": "fuse",
+            "Sensor": "sensor",
+            "Antenna": "antenna",
+            "Breadboard": "breadboard",
+            "Wire": "wire",
+            "Battery": "battery",
+            "Power Supply": "power_supply"
+        }
+
         self.type_input.addItems(self.component_types.keys())
         self.type_input.currentTextChanged.connect(self.update_fields)  # Update fields on selection change
         self.form_layout.addRow("Type:", self.type_input)
@@ -292,7 +325,7 @@ class AddComponentDialog(QDialog):
         """ Collects input data and adds the component to the database """
         part_number = self.part_number_input.text().strip() or None
         name = self.name_input.text().strip() or None
-        comp_type = self.type_input.currentText().strip()
+        comp_type = self.ui_to_backend_name_mapping[self.type_input.currentText()]
         quantity = self.quantity_input.value()  # Default quantity
         purchase_link = self.purchase_link_input.text().strip() or None
         datasheet_link = self.datasheet_link_input.text().strip() or None

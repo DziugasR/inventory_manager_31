@@ -6,6 +6,7 @@ from backend.models import (
     Fuse, Sensor, Antenna, Breadboard, Wire, Battery, PowerSupply
 )
 
+# TODO - parašyti testa, kad kiekvienam type kai sukuriam komponenta, jis susiskuria o ne crashina.
 class ComponentFactory:
     _component_types = {
         "resistor": Resistor,
@@ -13,21 +14,21 @@ class ComponentFactory:
         "inductor": Inductor,
         "diode": Diode,
         "transistor": Transistor,
-        "lED": LED,
+        "led": LED,
         "relay": Relay,
-        "op-Amp": OpAmp,
-        "voltage Regulator": VoltageRegulator,
+        "op_amp": OpAmp,
+        "voltage_regulator": VoltageRegulator,
         "microcontroller": Microcontroller,
-        "iC": IC,
-        "mOSFET": MOSFET,
+        "ic": IC,
+        "mosfet": MOSFET,
         "photodiode": Photodiode,
         "switch": Switch,
         "transformer": Transformer,
         "speaker": Speaker,
         "motor": Motor,
-        "heat Sink": HeatSink,
+        "heat_sink": HeatSink,
         "connector": Connector,
-        "crystal Oscillator": CrystalOscillator,
+        "crystal_oscillator": CrystalOscillator,
         "buzzer": Buzzer,
         "thermistor": Thermistor,
         "varistor": Varistor,
@@ -37,7 +38,7 @@ class ComponentFactory:
         "breadboard": Breadboard,
         "wire": Wire,
         "battery": Battery,
-        "power Supply": PowerSupply
+        "power_supply": PowerSupply
     }
 
     @staticmethod

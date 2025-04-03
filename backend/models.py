@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
-# Ensure SQLAlchemy’s Base works with ABC
 Base = declarative_base()
+
 
 class Component(Base):
     __tablename__ = "components"
@@ -17,222 +17,212 @@ class Component(Base):
     datasheet_link = Column(String, nullable=True)
 
     __mapper_args__ = {
-        "polymorphic_on": component_type,  # 🔹 Ensure polymorphic mapping is correct
+        "polymorphic_on": component_type,
         "polymorphic_identity": "component"
     }
 
     @abstractmethod
     def get_specifications(self):
-        """ This method will be implemented in subclasses. """
         pass
 
 
-class Resistor(Component):
-    __mapper_args__ = {"polymorphic_identity": "resistor"}
-
-    def get_specifications(self):
-        return f"Resistance: {self.value}"
-
-
-class Capacitor(Component):
-    __mapper_args__ = {"polymorphic_identity": "capacitor"}
-
-    def get_specifications(self):
-        return f"Capacitance: {self.value}"
-
-
-class Inductor(Component):
-    __mapper_args__ = {"polymorphic_identity": "inductor"}
-
-    def get_specifications(self):
-        return f"Inductance: {self.value}"
-
-
-class Diode(Component):
-    __mapper_args__ = {"polymorphic_identity": "diode"}
-
-    def get_specifications(self):
-        return f"Forward Voltage: {self.value}"
-
-
-class Transistor(Component):
-    __mapper_args__ = {"polymorphic_identity": "transistor"}
-
-    def get_specifications(self):
-        return f"Gain (hFE): {self.value}"
-
-
-class LED(Component):
-    __mapper_args__ = {"polymorphic_identity": "led"}
-
-    def get_specifications(self):
-        return f"Wavelength: {self.value} nm"
-
-
-class Relay(Component):
-    __mapper_args__ = {"polymorphic_identity": "relay"}
-
-    def get_specifications(self):
-        return f"Coil Voltage: {self.value} V"
-
-
-class OpAmp(Component):
-    __mapper_args__ = {"polymorphic_identity": "opamp"}
-
-    def get_specifications(self):
-        return f"Gain Bandwidth: {self.value} Hz"
-
-
-class VoltageRegulator(Component):
-    __mapper_args__ = {"polymorphic_identity": "voltage_regulator"}
-
-    def get_specifications(self):
-        return f"Output Voltage: {self.value} V"
-
-
-class Microcontroller(Component):
-    __mapper_args__ = {"polymorphic_identity": "microcontroller"}
-
-    def get_specifications(self):
-        return f"Architecture: {self.value}"
-
-
-class IC(Component):
-    __mapper_args__ = {"polymorphic_identity": "ic"}
-
-    def get_specifications(self):
-        return f"Function: {self.value}"
-
-
-class MOSFET(Component):
-    __mapper_args__ = {"polymorphic_identity": "mosfet"}
-
-    def get_specifications(self):
-        return f"Drain-Source Voltage: {self.value} V"
-
-
-class Photodiode(Component):
-    __mapper_args__ = {"polymorphic_identity": "photodiode"}
-
-    def get_specifications(self):
-        return f"Sensitivity: {self.value} A/W"
-
-
-class Switch(Component):
-    __mapper_args__ = {"polymorphic_identity": "switch"}
-
-    def get_specifications(self):
-        return f"Number of Positions: {self.value}"
-
-
-class Transformer(Component):
-    __mapper_args__ = {"polymorphic_identity": "transformer"}
-
-    def get_specifications(self):
-        return f"Primary Voltage: {self.value} V"
-
-
-class Speaker(Component):
-    __mapper_args__ = {"polymorphic_identity": "speaker"}
-
-    def get_specifications(self):
-        return f"Impedance: {self.value} Ω"
-
-
-class Motor(Component):
-    __mapper_args__ = {"polymorphic_identity": "motor"}
-
-    def get_specifications(self):
-        return f"RPM: {self.value}"
-
-
-class HeatSink(Component):
-    __mapper_args__ = {"polymorphic_identity": "heat_sink"}
-
-    def get_specifications(self):
-        return f"Thermal Resistance: {self.value} °C/W"
-
-
-class Connector(Component):
-    __mapper_args__ = {"polymorphic_identity": "connector"}
-
-    def get_specifications(self):
-        return f"Number of Pins: {self.value}"
-
-
-class CrystalOscillator(Component):
-    __mapper_args__ = {"polymorphic_identity": "crystal_oscillator"}
-
-    def get_specifications(self):
-        return f"Frequency: {self.value} MHz"
-
-
-class Buzzer(Component):
-    __mapper_args__ = {"polymorphic_identity": "buzzer"}
-
-    def get_specifications(self):
-        return f"Sound Level: {self.value} dB"
-
-
-class Thermistor(Component):
-    __mapper_args__ = {"polymorphic_identity": "thermistor"}
-
-    def get_specifications(self):
-        return f"Resistance at 25°C: {self.value} Ω"
-
-
-class Varistor(Component):
-    __mapper_args__ = {"polymorphic_identity": "varistor"}
-
-    def get_specifications(self):
-        return f"Voltage Rating: {self.value} V"
-
-
-class Fuse(Component):
-    __mapper_args__ = {"polymorphic_identity": "fuse"}
-
-    def get_specifications(self):
-        return f"Current Rating: {self.value} A"
-
-
-class Sensor(Component):
-    __mapper_args__ = {"polymorphic_identity": "sensor"}
-
-    def get_specifications(self):
-        return f"Type: {self.value}"
-
-
-class Antenna(Component):
-    __mapper_args__ = {"polymorphic_identity": "antenna"}
-
-    def get_specifications(self):
-        return f"Frequency Range: {self.value} MHz"
-
-
-class Breadboard(Component):
-    __mapper_args__ = {"polymorphic_identity": "breadboard"}
-
-    def get_specifications(self):
-        return f"Size: {self.value} mm"
-
-
-class Wire(Component):
-    __mapper_args__ = {"polymorphic_identity": "wire"}
-
-    def get_specifications(self):
-        return f"Gauge: {self.value} AWG"
-
-
-class Battery(Component):
-    __mapper_args__ = {"polymorphic_identity": "battery"}
-
-    def get_specifications(self):
-        return f"Voltage: {self.value} V"
-
-
-class PowerSupply(Component):
-    __mapper_args__ = {"polymorphic_identity": "power_supply"}
-
-    def get_specifications(self):
-        return f"Output Voltage: {self.value} V"
-
+def create_component_class(class_name, polymorphic_id, spec_format_string):
+    """Dynamically creates a Component subclass."""
+
+    def generated_get_specifications(self):
+        unit = ""
+        parts = spec_format_string.split()
+
+        if len(parts) > 1:
+            unit = " " + parts[-1] # Assumes last word is the unit
+
+        return f"{spec_format_string}: {self.value}{unit}"
+
+    class_attributes = {
+        "__mapper_args__": {"polymorphic_identity": polymorphic_id},
+        "get_specifications": generated_get_specifications
+    }
+
+    new_class = type(class_name, (Component,), class_attributes)
+    return new_class
+
+
+Resistor = create_component_class(
+    class_name="Resistor",
+    polymorphic_id="resistor",
+    spec_format_string="Resistance Ω"
+)
+
+Capacitor = create_component_class(
+    class_name="Capacitor",
+    polymorphic_id="capacitor",
+    spec_format_string="Capacitance F"
+)
+
+Inductor = create_component_class(
+    class_name="Inductor",
+    polymorphic_id="inductor",
+    spec_format_string="Inductance H"
+)
+
+Diode = create_component_class(
+    class_name="Diode",
+    polymorphic_id="diode",
+    spec_format_string="Forward Voltage V"
+)
+
+Transistor = create_component_class(
+    class_name="Transistor",
+    polymorphic_id="transistor",
+    spec_format_string="Gain (hFE)"
+)
+
+LED = create_component_class(
+    class_name="LED",
+    polymorphic_id="led",
+    spec_format_string="Wavelength nm"
+)
+
+Relay = create_component_class(
+    class_name="Relay",
+    polymorphic_id="relay",
+    spec_format_string="Coil Voltage V"
+)
+
+OpAmp = create_component_class(
+    class_name="OpAmp",
+    polymorphic_id="opamp",
+    spec_format_string="Gain Bandwidth Hz"
+)
+
+VoltageRegulator = create_component_class(
+    class_name="VoltageRegulator",
+    polymorphic_id="voltage_regulator",
+    spec_format_string="Output Voltage V"
+)
+
+Microcontroller = create_component_class(
+    class_name="Microcontroller",
+    polymorphic_id="microcontroller",
+    spec_format_string="Architecture"
+)
+
+IC = create_component_class(
+    class_name="IC",
+    polymorphic_id="ic",
+    spec_format_string="Function"
+)
+
+MOSFET = create_component_class(
+    class_name="MOSFET",
+    polymorphic_id="mosfet",
+    spec_format_string="Drain-Source Voltage V"
+)
+
+Photodiode = create_component_class(
+    class_name="Photodiode",
+    polymorphic_id="photodiode",
+    spec_format_string="Sensitivity A/W"
+)
+
+Switch = create_component_class(
+    class_name="Switch",
+    polymorphic_id="switch",
+    spec_format_string="Number of Positions"
+)
+
+Transformer = create_component_class(
+    class_name="Transformer",
+    polymorphic_id="transformer",
+    spec_format_string="Primary Voltage V"
+)
+
+Speaker = create_component_class(
+    class_name="Speaker",
+    polymorphic_id="speaker",
+    spec_format_string="Impedance Ω"
+)
+
+Motor = create_component_class(
+    class_name="Motor",
+    polymorphic_id="motor",
+    spec_format_string="RPM"
+)
+
+HeatSink = create_component_class(
+    class_name="HeatSink",
+    polymorphic_id="heat_sink",
+    spec_format_string="Thermal Resistance °C/W"
+)
+
+Connector = create_component_class(
+    class_name="Connector",
+    polymorphic_id="connector",
+    spec_format_string="Number of Pins"
+)
+
+CrystalOscillator = create_component_class(
+    class_name="CrystalOscillator",
+    polymorphic_id="crystal_oscillator",
+    spec_format_string="Frequency MHz"
+)
+
+Buzzer = create_component_class(
+    class_name="Buzzer",
+    polymorphic_id="buzzer",
+    spec_format_string="Sound Level dB"
+)
+
+Thermistor = create_component_class(
+    class_name="Thermistor",
+    polymorphic_id="thermistor",
+    spec_format_string="Resistance at 25°C Ω"
+)
+
+Varistor = create_component_class(
+    class_name="Varistor",
+    polymorphic_id="varistor",
+    spec_format_string="Voltage Rating V"
+)
+
+Fuse = create_component_class(
+    class_name="Fuse",
+    polymorphic_id="fuse",
+    spec_format_string="Current Rating A"
+)
+
+Sensor = create_component_class(
+    class_name="Sensor",
+    polymorphic_id="sensor",
+    spec_format_string="Type"
+)
+
+Antenna = create_component_class(
+    class_name="Antenna",
+    polymorphic_id="antenna",
+    spec_format_string="Frequency Range MHz"
+)
+
+Breadboard = create_component_class(
+    class_name="Breadboard",
+    polymorphic_id="breadboard",
+    spec_format_string="Size mm"
+)
+
+Wire = create_component_class(
+    class_name="Wire",
+    polymorphic_id="wire",
+    spec_format_string="Gauge AWG"
+)
+
+Battery = create_component_class(
+    class_name="Battery",
+    polymorphic_id="battery",
+    spec_format_string="Voltage V"
+)
+
+PowerSupply = create_component_class(
+    class_name="PowerSupply",
+    polymorphic_id="power_supply",
+    spec_format_string="Output Voltage V"
+)

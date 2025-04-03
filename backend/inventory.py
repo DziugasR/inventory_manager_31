@@ -3,10 +3,11 @@ from backend.models import Component
 from backend.database import get_session
 from backend.component_factory import ComponentFactory
 
+# TODO nemaišyt UI su backend
+
 def add_component(part_number, name, component_type, value, quantity, purchase_link, datasheet_link, parent=None):
     session = get_session()
     try:
-        component_type = component_type.lower()
         if session.query(Component).filter_by(part_number=part_number).first():
             # Duplicate found; warn and return False.
             return False
@@ -23,6 +24,7 @@ def add_component(part_number, name, component_type, value, quantity, purchase_l
         session.commit()
         return True
     except Exception as e:
+        QMessageBox.warning(parent, "Add error", f" {e}")
         session.rollback()
         return False
     finally:
@@ -130,6 +132,7 @@ def export_components_to_txt(file_path):
         print(f"Error exporting to TXT: {e}")
         return False  # Failure
 
+# TODO scrap this shit and import/export from excel instead
 def import_components_from_txt(file_path):
     """ Import components from a TXT file into the database using the Factory Pattern. """
     session = get_session()
@@ -148,7 +151,7 @@ def import_components_from_txt(file_path):
 
             part_number = parts[0] if parts[0] != "N/A" else None
             name = parts[1] if parts[1] != "N/A" else None
-            component_type = parts[2].lower()
+            component_type = parts[2]
             value = parts[3]
             quantity = int(parts[4])
             purchase_link = parts[5] if parts[5] != "N/A" else None
