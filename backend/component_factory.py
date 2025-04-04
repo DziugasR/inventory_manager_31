@@ -6,7 +6,6 @@ from backend.models import (
     Fuse, Sensor, Antenna, Breadboard, Wire, Battery, PowerSupply
 )
 
-# TODO - parašyti testa, kad kiekvienam type kai sukuriam komponenta, jis susiskuria o ne crashina.
 class ComponentFactory:
     _component_types = {
         "resistor": Resistor,

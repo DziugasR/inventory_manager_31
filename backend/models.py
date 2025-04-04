@@ -91,7 +91,7 @@ Relay = create_component_class(
 
 OpAmp = create_component_class(
     class_name="OpAmp",
-    polymorphic_id="opamp",
+    polymorphic_id="op_amp",
     spec_format_string="Gain Bandwidth Hz"
 )
 
