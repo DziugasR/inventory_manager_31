@@ -7,7 +7,10 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QColor, QDesktopServices
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
-from backend.inventory import get_all_components, add_component, remove_component_by_part_number, remove_component_quantity, import_components_from_txt
+from backend.inventory import (get_all_components, add_component, remove_component_by_part_number,
+                               remove_component_quantity, import_components_from_txt)
+
+from backend.exceptions import (InvalidQuantityError, ComponentNotFoundError, StockError, DatabaseError, DuplicateComponentError, InvalidInputError)
 
 class InventoryUI(QMainWindow):
     def __init__(self):
@@ -116,13 +119,26 @@ class InventoryUI(QMainWindow):
             self.remove_button.setEnabled(False)
 
     def open_add_component_dialog(self):
-        """ Opens the Add Component popup window. """
+        """Opens the Add Component popup window."""
         dialog = AddComponentDialog(self)
         if dialog.exec_():  # If the dialog is successfully closed with "OK"
-            self.load_data()  # Refresh the table with new data
+            print("Adding component exactly once")
+            try:
+                # Assuming the dialog has a method to get the component data
+                component_data = dialog.get_component_data()
+                add_component(**component_data)
+                self.load_data()  # Refresh the table with new data
+            except DuplicateComponentError as e:
+                QMessageBox.warning(self, "Duplicate Component", str(e))
+            except InvalidQuantityError as e:
+                QMessageBox.warning(self, "Invalid Quantity", str(e))
+            except DatabaseError as e:
+                QMessageBox.critical(self, "Database Error", str(e))
+            except Exception as e:
+                QMessageBox.critical(self, "Unexpected Error", f"An unexpected error occurred: {e}")
 
     def remove_selected_component(self):
-        """ Removes a selected quantity of the component from the database. """
+        """Removes a selected quantity of the component from the database."""
         selected_row = self.table.currentRow()
         if selected_row < 0:
             QMessageBox.warning(self, "Selection Error", "Please select a component to remove.")
@@ -136,12 +152,19 @@ class InventoryUI(QMainWindow):
             return
 
         part_number = part_number_item.text()
-        current_quantity = int(quantity_item.text())  # Get existing quantity
+
+        try:
+            current_quantity = int(quantity_item.text())  # Get existing quantity
+        except ValueError:
+            QMessageBox.warning(self, "Error", "Invalid quantity value in the table.")
+            return
 
         # Get user input for how many to remove
-        quantity_to_remove, ok = QInputDialog.getInt(self, "Remove Quantity",
-                                                     f"Available: {current_quantity} units\nEnter quantity to remove:",
-                                                     min=1, max=current_quantity)
+        quantity_to_remove, ok = QInputDialog.getInt(
+            self, "Remove Quantity",
+            f"Available: {current_quantity} units\nEnter quantity to remove:",
+            min=1, max=current_quantity
+        )
 
         if not ok or quantity_to_remove <= 0:
             return  # User canceled or entered an invalid value
@@ -154,11 +177,19 @@ class InventoryUI(QMainWindow):
         )
 
         if confirm == QMessageBox.Yes:
-            success = remove_component_quantity(part_number, quantity_to_remove, parent=self)
-            if success:
+            try:
+                remove_component_quantity(part_number, quantity_to_remove)
                 self.load_data()  # Refresh table after removal
-            else:
-                QMessageBox.warning(self, "Database Error", "Failed to remove the component.")
+            except InvalidQuantityError as e:
+                QMessageBox.warning(self, "Invalid Quantity", str(e))
+            except ComponentNotFoundError as e:
+                QMessageBox.warning(self, "Component Not Found", str(e))
+            except StockError as e:
+                QMessageBox.warning(self, "Stock Error", str(e))
+            except DatabaseError as e:
+                QMessageBox.critical(self, "Database Error", str(e))
+            except Exception as e:
+                QMessageBox.critical(self, "Unexpected Error", f"An unexpected error occurred: {e}")
 
     def export_to_txt(self):
         """ Export components from database to a TXT file. """
@@ -290,7 +321,7 @@ class AddComponentDialog(QDialog):
 
         # OK & Cancel buttons
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.button_box.accepted.connect(self.add_component)
+        self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         self.layout.addWidget(self.button_box)
 
@@ -321,26 +352,72 @@ class AddComponentDialog(QDialog):
             self.dynamic_fields[field_name] = (label, input_field)
             insert_position += 1  # Move index forward for the next field
 
-    def add_component(self):
-        """ Collects input data and adds the component to the database """
-        part_number = self.part_number_input.text().strip() or None
-        name = self.name_input.text().strip() or None
-        comp_type = self.ui_to_backend_name_mapping[self.type_input.currentText()]
-        quantity = self.quantity_input.value()  # Default quantity
-        purchase_link = self.purchase_link_input.text().strip() or None
-        datasheet_link = self.datasheet_link_input.text().strip() or None
+    def validate_inputs(self):
+        """Validate all input fields and raise appropriate exceptions if invalid"""
+        part_number = self.part_number_input.text().strip()
+        name = self.name_input.text().strip()
 
-        # Collect dynamic input values
+        if not part_number:
+            raise InvalidInputError("Part number is required")
+        if not name:
+            raise InvalidInputError("Name is required")
+
+        # Validate dynamic fields
+        for field_name, (_, input_field) in self.dynamic_fields.items():
+            value = input_field.text().strip()
+            if not value:
+                raise InvalidInputError(f"{field_name} is required")
+
+        return True
+
+    def get_component_data(self):
+        """Collect and return all component data as a dictionary"""
+        return {
+            'part_number': self.part_number_input.text().strip(),
+            'name': self.name_input.text().strip(),
+            'component_type': self.ui_to_backend_name_mapping[self.type_input.currentText()],
+            'value': self.get_dynamic_values(),
+            'quantity': self.quantity_input.value(),
+            'purchase_link': self.purchase_link_input.text().strip(),
+            'datasheet_link': self.datasheet_link_input.text().strip()
+        }
+
+    def get_dynamic_values(self):
+        """Collect dynamic input values and format them"""
         values = []
         for field_name, (_, input_field) in self.dynamic_fields.items():
             value = input_field.text().strip()
             values.append(f"{field_name}: {value}")
+        return ", ".join(values)
 
-        value_str = ", ".join(values)  # Combine values into a single string
+    def add_component(self):
+        """Handle component addition with proper exception handling"""
+        try:
+            self.validate_inputs()
+            component_data = self.get_component_data()
 
-        success = add_component(part_number, name, comp_type, value_str, quantity, purchase_link, datasheet_link, parent=self)
+            try:
+                print("1")
+                add_component(
+                    part_number=component_data['part_number'],
+                    name=component_data['name'],
+                    component_type=component_data['component_type'],
+                    value=component_data['value'],
+                    quantity=component_data['quantity'],
+                    purchase_link=component_data['purchase_link'],
+                    datasheet_link=component_data['datasheet_link']
+                )
+                self.accept()
 
-        if success:
-            self.accept()  # Close the popup if adding is successful
-        else:
-            QMessageBox.warning(self, "Database Error", "Failed to add the component.")
+            except DuplicateComponentError as e:
+                QMessageBox.warning(self, "Duplicate Component", str(e))
+            except InvalidQuantityError as e:
+                QMessageBox.warning(self, "Invalid Quantity", str(e))
+            except DatabaseError as e:
+                QMessageBox.critical(self, "Database Error", str(e))
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to add component: {str(e)}")
+        except InvalidInputError as e:
+            QMessageBox.warning(self, "Invalid Input", str(e))
+
+

@@ -1,16 +1,17 @@
-from PyQt5.QtWidgets import QMessageBox
 from backend.models import Component
 from backend.database import get_session
 from backend.component_factory import ComponentFactory
 
-# TODO nemaišyt UI su backend
+from backend.exceptions import InvalidInputError, DuplicateComponentError, ComponentError, DatabaseError, InvalidQuantityError, \
+    ComponentNotFoundError, StockError
 
-def add_component(part_number, name, component_type, value, quantity, purchase_link, datasheet_link, parent=None):
+def add_component(part_number, name, component_type, value, quantity, purchase_link, datasheet_link):
     session = get_session()
     try:
         if session.query(Component).filter_by(part_number=part_number).first():
-            # Duplicate found; warn and return False.
-            return False
+            raise DuplicateComponentError(f"Component with part number {part_number} already exists")
+
+        print("2")
         component = ComponentFactory.create_component(
             component_type,
             part_number=part_number,
@@ -22,95 +23,98 @@ def add_component(part_number, name, component_type, value, quantity, purchase_l
         )
         session.add(component)
         session.commit()
+        return component
+    except Exception as e:
+        session.rollback()
+        if not isinstance(e, ComponentError):
+            raise DatabaseError(f"Database error: {e}") from e
+        raise
+    finally:
+        session.close()
+
+
+def remove_component_quantity(part_number, quantity):
+    """Removes a specified quantity of the component from the database."""
+    if not isinstance(quantity, int) or quantity <= 0:
+        raise InvalidQuantityError("Quantity must be a positive number")
+
+    session = get_session()
+    try:
+        component = session.query(Component).filter_by(part_number=part_number).first()
+        if not component:
+            raise ComponentNotFoundError(f"Component with part number {part_number} not found")
+
+        if component.quantity < quantity:
+            raise StockError(f"Not enough stock to remove {quantity}. Available: {component.quantity}")
+
+        component.quantity -= quantity
+        if component.quantity == 0:
+            session.delete(component)
+        session.commit()
+        return component
+    except Exception as e:
+        session.rollback()
+        if not isinstance(e, ComponentError):
+            raise DatabaseError(f"Error while removing component: {e}") from e
+        raise
+    finally:
+        session.close()
+
+
+def remove_component_by_part_number(part_number):
+    """Removes a component from the database using the part number."""
+    session = get_session()
+    try:
+        component = session.query(Component).filter_by(part_number=part_number).first()
+        if not component:
+            raise ComponentNotFoundError(f"Component with part number {part_number} not found")
+
+        session.delete(component)
+        session.commit()
         return True
     except Exception as e:
-        QMessageBox.warning(parent, "Add error", f" {e}")
         session.rollback()
-        return False
+        if not isinstance(e, ComponentError):
+            raise DatabaseError(f"Error while deleting component: {e}") from e
+        raise
     finally:
         session.close()
 
-def remove_component_quantity(part_number, quantity, parent=None):
-    """ Removes a specified quantity of the component from the database. """
-    if not isinstance(quantity, int) or quantity <= 0:
-        QMessageBox.warning(parent, "Invalid Quantity", "Quantity must be a positive number.")
-        return False
-
-    session = get_session()
-    try:
-        component = session.query(Component).filter_by(part_number=part_number).first()
-        if component:
-            if component.quantity >= quantity:
-                component.quantity -= quantity
-                if component.quantity == 0:  # If no stock left, remove the item
-                    session.delete(component)
-                session.commit()
-                return True
-            else:
-                QMessageBox.warning(parent, "Stock Error", f"Not enough stock to remove {quantity}. Available: {component.quantity}")
-                return False
-        else:
-            QMessageBox.warning(parent, "Not Found", f"Component with part number {part_number} not found.")
-            return False
-    except Exception as e:
-        session.rollback()
-        QMessageBox.warning(parent, "Database Error", f"Error while removing component: {e}")
-        return False
-    finally:
-        session.close()
-
-def remove_component_by_part_number(part_number, parent=None):
-    """ Removes a component from the database using the part number. """
-    session = get_session()
-    try:
-        component = session.query(Component).filter_by(part_number=part_number).first()
-        if component:
-            session.delete(component)
-            session.commit()
-            return True
-        else:
-            QMessageBox.warning(parent, "Not Found", f"Component with part number {part_number} not found.")
-            return False
-    except Exception as e:
-        session.rollback()
-        QMessageBox.warning(parent, "Database Error", f"Error while deleting component: {e}")
-        return False
-    finally:
-        session.close()
 
 def get_all_components():
-    """ Fetches all components from the database. """
+    """Fetches all components from the database."""
     session = get_session()
     try:
-        return session.query(Component).all()  # No need to reference `id`
+        return session.query(Component).all()
     except Exception as e:
-        QMessageBox.warning(None, "Database Error", f"Error while fetching components: {e}")
-        return []
+        raise DatabaseError(f"Error while fetching components: {e}") from e
     finally:
         session.close()
 
-def update_component_quantity(component_id, new_quantity, parent=None):
-    """ Updates the quantity of a specific component based on its ID. """
+
+def update_component_quantity(component_id, new_quantity):
+    """Updates the quantity of a specific component based on its ID."""
     if not isinstance(new_quantity, int) or new_quantity < 0:
-        QMessageBox.warning(parent, "Invalid Quantity", "Quantity must be a non-negative integer.")
-        return False
+        raise InvalidQuantityError("Quantity must be a non-negative integer")
 
     session = get_session()
     try:
         component = session.query(Component).filter_by(id=component_id).first()
-        if component:
-            component.quantity = new_quantity
-            session.commit()
-            return True
-        else:
-            QMessageBox.warning(parent, "Not Found", f"Component with ID {component_id} not found.")
-            return False
+        if not component:
+            raise ComponentNotFoundError(f"Component with ID {component_id} not found")
+
+        component.quantity = new_quantity
+        session.commit()
+        return component
     except Exception as e:
         session.rollback()
-        QMessageBox.warning(parent, "Database Error", f"Error while updating component quantity: {e}")
-        return False
+        if not isinstance(e, ComponentError):
+            raise DatabaseError(f"Error while updating component quantity: {e}") from e
+        raise
     finally:
         session.close()
+
+# TODO scrap this shit and import/export from excel instead
 
 def export_components_to_txt(file_path):
     """ Export all components from database to a TXT file. """
@@ -132,7 +136,7 @@ def export_components_to_txt(file_path):
         print(f"Error exporting to TXT: {e}")
         return False  # Failure
 
-# TODO scrap this shit and import/export from excel instead
+
 def import_components_from_txt(file_path):
     """ Import components from a TXT file into the database using the Factory Pattern. """
     session = get_session()
