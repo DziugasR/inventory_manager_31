@@ -1,12 +1,11 @@
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
-    QVBoxLayout, QWidget, QHBoxLayout
+    QVBoxLayout, QWidget, QHBoxLayout, QAction, QToolBar
 )
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
 from frontend.ui.add_component_dialog import AddComponentDialog
-
 
 class InventoryUI(QMainWindow):
     """ Main application window UI definition. """
@@ -29,6 +28,23 @@ class InventoryUI(QMainWindow):
         """ Initialize UI elements. """
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
+
+        # --- Toolbar --- START
+        self.toolbar = QToolBar("Main Toolbar")
+        self.addToolBar(Qt.TopToolBarArea, self.toolbar)  # Add toolbar to the top
+
+        # Create dummy actions (buttons) for the toolbar
+        self.file_action = QAction("File", self)
+        self.settings_action = QAction("Settings", self)
+        self.view_action = QAction("View", self)
+        self.tools_action = QAction("Tools", self)
+        # Add actions to the toolbar - they appear as buttons
+        self.toolbar.addAction(self.file_action)
+        self.toolbar.addAction(self.settings_action)
+        self.toolbar.addAction(self.view_action)
+        self.toolbar.addAction(self.tools_action)
+        # --- Toolbar --- END
+
         self.layout = QVBoxLayout(self.central_widget)
 
         # --- Buttons ---
@@ -40,10 +56,10 @@ class InventoryUI(QMainWindow):
         self.remove_button.setEnabled(False) # Initially disabled
         button_layout.addWidget(self.remove_button)
 
-        self.export_button = QPushButton("Export to .TXT") # Corrected label
+        self.export_button = QPushButton("Export to .TXT (Not working)") # Corrected label
         button_layout.addWidget(self.export_button)
 
-        self.import_button = QPushButton("Import from .TXT") # Corrected label
+        self.import_button = QPushButton("Import from .TXT (Not working)") # Corrected label
         button_layout.addWidget(self.import_button)
 
         self.layout.addLayout(button_layout)
