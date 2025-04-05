@@ -77,7 +77,6 @@ class AddComponentDialog(QDialog):
         self.form_layout.addRow("Name:", self.name_input)
 
         self.dynamic_fields = {}
-        self._create_dynamic_fields() # Initial population
 
         self.quantity_input = QSpinBox(self)
         self.quantity_input.setRange(1, 10000)
@@ -89,6 +88,8 @@ class AddComponentDialog(QDialog):
 
         self.datasheet_link_input = QLineEdit(self)
         self.form_layout.addRow("Datasheet Link:", self.datasheet_link_input)
+
+        self._create_dynamic_fields()  # Initial population
 
         self.layout.addLayout(self.form_layout)
 
