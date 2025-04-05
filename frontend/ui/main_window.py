@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
-    QVBoxLayout, QWidget, QHBoxLayout, QAction, QToolBar
+    QVBoxLayout, QWidget, QHBoxLayout, QAction, QToolBar, QToolButton, QMenu
 )
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
@@ -29,20 +29,69 @@ class InventoryUI(QMainWindow):
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
 
+        #TODO toolbara į kita failą
+
         # --- Toolbar --- START
         self.toolbar = QToolBar("Main Toolbar")
         self.addToolBar(Qt.TopToolBarArea, self.toolbar)  # Add toolbar to the top
 
-        # Create dummy actions (buttons) for the toolbar
-        self.file_action = QAction("File", self)
-        self.settings_action = QAction("Settings", self)
-        self.view_action = QAction("View", self)
-        self.tools_action = QAction("Tools", self)
-        # Add actions to the toolbar - they appear as buttons
-        self.toolbar.addAction(self.file_action)
-        self.toolbar.addAction(self.settings_action)
-        self.toolbar.addAction(self.view_action)
-        self.toolbar.addAction(self.tools_action)
+        # --- File Menu Dropdown ---
+        # 1. Create the QMenu
+        self.file_menu = QMenu("File", self)
+
+        # 2. Create Actions for the menu items
+        self.new_action = QAction("New Inventory...", self)
+        self.open_action = QAction("Open Inventory...", self)
+        self.save_action = QAction("Save Inventory", self)
+        self.save_as_action = QAction("Save Inventory As...", self)
+        self.exit_action = QAction("Exit", self)
+
+        # 3. Add Actions to the QMenu
+        self.file_menu.addAction(self.new_action)
+        self.file_menu.addAction(self.open_action)
+        self.file_menu.addAction(self.save_action)
+        self.file_menu.addAction(self.save_as_action)
+        self.file_menu.addSeparator()  # Add a visual separator line
+        self.file_menu.addAction(self.exit_action)
+
+        # 4. Create the main Action/Button FOR the toolbar
+        self.file_menu_action = QAction("File", self)  # This text appears on the toolbar button if no icon
+
+        # 5. Associate the QMenu with the main toolbar Action
+        self.file_menu_action.setMenu(self.file_menu)
+
+        # 6. Add the main Action (which now has a menu) to the toolbar
+        self.toolbar.addAction(self.file_menu_action)
+
+        # 7. Set the popup mode for the button associated with the action
+        # This makes it look like a dropdown button
+        file_tool_button = self.toolbar.widgetForAction(self.file_menu_action)
+        if isinstance(file_tool_button, QToolButton):
+            file_tool_button.setPopupMode(QToolButton.InstantPopup)  # Or MenuButtonPopup for split button
+
+        # --- Edit Menu Dropdown (Example) ---
+        self.edit_menu = QMenu("Edit", self)
+        self.copy_action = QAction("Copy Row", self)
+        self.paste_action = QAction("Paste Row", self)  # Example action
+        self.find_action = QAction("Find...", self)
+
+        self.edit_menu.addAction(self.copy_action)
+        self.edit_menu.addAction(self.paste_action)
+        self.edit_menu.addSeparator()
+        self.edit_menu.addAction(self.find_action)
+
+        self.edit_menu_action = QAction("Edit", self)
+        self.edit_menu_action.setMenu(self.edit_menu)
+        self.toolbar.addAction(self.edit_menu_action)
+
+        edit_tool_button = self.toolbar.widgetForAction(self.edit_menu_action)
+        if isinstance(edit_tool_button, QToolButton):
+            edit_tool_button.setPopupMode(QToolButton.InstantPopup)
+
+        # --- Simple Action (Button) still possible ---
+        self.help_action = QAction("Help", self)  # A simple button, not a dropdown
+        self.toolbar.addAction(self.help_action)
+
         # --- Toolbar --- END
 
         self.layout = QVBoxLayout(self.central_widget)
