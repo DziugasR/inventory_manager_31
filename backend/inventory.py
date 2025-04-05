@@ -80,6 +80,16 @@ def remove_component_by_part_number(part_number):
     finally:
         session.close()
 
+def get_component_by_part_number(part_number: str) -> Component | None:
+    session = get_session()
+    try:
+        component = session.query(Component).filter_by(part_number=part_number).first()
+        return component
+    except Exception as e:
+        # Catch specific SQLAlchemy errors if needed, otherwise a general catch
+        raise DatabaseError(f"Error while fetching component by part number {part_number}: {e}") from e
+    finally:
+        session.close()
 
 def get_all_components():
     """Fetches all components from the database."""
