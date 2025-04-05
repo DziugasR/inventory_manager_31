@@ -29,8 +29,6 @@ class InventoryUI(QMainWindow):
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
 
-        #TODO toolbara į kita failą
-
         # --- Toolbar --- START
         self.toolbar = QToolBar("Main Toolbar")
         self.addToolBar(Qt.TopToolBarArea, self.toolbar)  # Add toolbar to the top
