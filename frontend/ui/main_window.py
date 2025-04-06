@@ -1,11 +1,13 @@
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
-    QVBoxLayout, QWidget, QHBoxLayout, QAction, QToolBar, QToolButton, QMenu
+    QVBoxLayout, QWidget, QHBoxLayout, QAction, QToolButton, QMenu
 )
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
 from frontend.ui.add_component_dialog import AddComponentDialog
+
+from frontend.ui.toolbar import setup_toolbar
 
 class InventoryUI(QMainWindow):
     """ Main application window UI definition. """
@@ -17,80 +19,30 @@ class InventoryUI(QMainWindow):
     load_data_requested = pyqtSignal()
     link_clicked = pyqtSignal(QUrl)
 
+    new_inventory_triggered = pyqtSignal()
+    open_inventory_triggered = pyqtSignal()
+    save_inventory_triggered = pyqtSignal()
+    save_inventory_as_triggered = pyqtSignal()
+    exit_triggered = pyqtSignal()
+    copy_row_triggered = pyqtSignal()
+    paste_row_triggered = pyqtSignal()
+    find_triggered = pyqtSignal()
+    help_triggered = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Electronics Inventory Manager")
         self.setGeometry(100, 100, 960, 600)
         self._init_ui()
         self._connect_signals()
+        self._connect_toolbar_signals()
 
     def _init_ui(self):
         """ Initialize UI elements. """
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
 
-        # --- Toolbar --- START
-        self.toolbar = QToolBar("Main Toolbar")
-        self.addToolBar(Qt.TopToolBarArea, self.toolbar)  # Add toolbar to the top
-
-        # --- File Menu Dropdown ---
-        # 1. Create the QMenu
-        self.file_menu = QMenu("File", self)
-
-        # 2. Create Actions for the menu items
-        self.new_action = QAction("New Inventory...", self)
-        self.open_action = QAction("Open Inventory...", self)
-        self.save_action = QAction("Save Inventory", self)
-        self.save_as_action = QAction("Save Inventory As...", self)
-        self.exit_action = QAction("Exit", self)
-
-        # 3. Add Actions to the QMenu
-        self.file_menu.addAction(self.new_action)
-        self.file_menu.addAction(self.open_action)
-        self.file_menu.addAction(self.save_action)
-        self.file_menu.addAction(self.save_as_action)
-        self.file_menu.addSeparator()  # Add a visual separator line
-        self.file_menu.addAction(self.exit_action)
-
-        # 4. Create the main Action/Button FOR the toolbar
-        self.file_menu_action = QAction("File", self)  # This text appears on the toolbar button if no icon
-
-        # 5. Associate the QMenu with the main toolbar Action
-        self.file_menu_action.setMenu(self.file_menu)
-
-        # 6. Add the main Action (which now has a menu) to the toolbar
-        self.toolbar.addAction(self.file_menu_action)
-
-        # 7. Set the popup mode for the button associated with the action
-        # This makes it look like a dropdown button
-        file_tool_button = self.toolbar.widgetForAction(self.file_menu_action)
-        if isinstance(file_tool_button, QToolButton):
-            file_tool_button.setPopupMode(QToolButton.InstantPopup)  # Or MenuButtonPopup for split button
-
-        # --- Edit Menu Dropdown (Example) ---
-        self.edit_menu = QMenu("Edit", self)
-        self.copy_action = QAction("Copy Row", self)
-        self.paste_action = QAction("Paste Row", self)  # Example action
-        self.find_action = QAction("Find...", self)
-
-        self.edit_menu.addAction(self.copy_action)
-        self.edit_menu.addAction(self.paste_action)
-        self.edit_menu.addSeparator()
-        self.edit_menu.addAction(self.find_action)
-
-        self.edit_menu_action = QAction("Edit", self)
-        self.edit_menu_action.setMenu(self.edit_menu)
-        self.toolbar.addAction(self.edit_menu_action)
-
-        edit_tool_button = self.toolbar.widgetForAction(self.edit_menu_action)
-        if isinstance(edit_tool_button, QToolButton):
-            edit_tool_button.setPopupMode(QToolButton.InstantPopup)
-
-        # --- Simple Action (Button) still possible ---
-        self.help_action = QAction("Help", self)  # A simple button, not a dropdown
-        self.toolbar.addAction(self.help_action)
-
-        # --- Toolbar --- END
+        setup_toolbar(self)
 
         self.layout = QVBoxLayout(self.central_widget)
 
@@ -132,6 +84,28 @@ class InventoryUI(QMainWindow):
         self.table.cellClicked.connect(self._handle_cell_click)
         # Update remove button state based on selection
         self.table.selectionModel().selectionChanged.connect(self._update_remove_button_state)
+
+    def _connect_toolbar_signals(self):
+        """ Connect signals from toolbar actions to the UI's signals. """
+        # Check if attributes exist before connecting (good practice)
+        if hasattr(self, 'new_action'):
+            self.new_action.triggered.connect(self.new_inventory_triggered)
+        if hasattr(self, 'open_action'):
+            self.open_action.triggered.connect(self.open_inventory_triggered)
+        if hasattr(self, 'save_action'):
+            self.save_action.triggered.connect(self.save_inventory_triggered)
+        if hasattr(self, 'save_as_action'):
+            self.save_as_action.triggered.connect(self.save_inventory_as_triggered)
+        if hasattr(self, 'exit_action'):
+            self.exit_action.triggered.connect(self.exit_triggered)
+        if hasattr(self, 'copy_action'):
+            self.copy_action.triggered.connect(self.copy_row_triggered)
+        if hasattr(self, 'paste_action'):
+            self.paste_action.triggered.connect(self.paste_row_triggered)
+        if hasattr(self, 'find_action'):
+            self.find_action.triggered.connect(self.find_triggered)
+        if hasattr(self, 'help_action'):
+            self.help_action.triggered.connect(self.help_triggered)
 
     def _on_remove_clicked(self):
         """ Internal handler to get part number before emitting signal. """
