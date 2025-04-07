@@ -60,25 +60,25 @@ def remove_component_quantity(part_number, quantity):
     finally:
         session.close()
 
-
-def remove_component_by_part_number(part_number):
-    """Removes a component from the database using the part number."""
-    session = get_session()
-    try:
-        component = session.query(Component).filter_by(part_number=part_number).first()
-        if not component:
-            raise ComponentNotFoundError(f"Component with part number {part_number} not found")
-
-        session.delete(component)
-        session.commit()
-        return True
-    except Exception as e:
-        session.rollback()
-        if not isinstance(e, ComponentError):
-            raise DatabaseError(f"Error while deleting component: {e}") from e
-        raise
-    finally:
-        session.close()
+# TODO: WTF?
+# def remove_component_by_part_number(part_number):
+#     """Removes a component from the database using the part number."""
+#     session = get_session()
+#     try:
+#         component = session.query(Component).filter_by(part_number=part_number).first()
+#         if not component:
+#             raise ComponentNotFoundError(f"Component with part number {part_number} not found")
+#
+#         session.delete(component)
+#         session.commit()
+#         return True
+#     except Exception as e:
+#         session.rollback()
+#         if not isinstance(e, ComponentError):
+#             raise DatabaseError(f"Error while deleting component: {e}") from e
+#         raise
+#     finally:
+#         session.close()
 
 def get_component_by_part_number(part_number: str) -> Component | None:
     session = get_session()
@@ -124,73 +124,17 @@ def update_component_quantity(component_id, new_quantity):
     finally:
         session.close()
 
-# TODO scrap this shit and import/export from excel instead
+def select_multiple_components(part_numbers: list[str]) -> list[Component]:
+    if not part_numbers:
+        return []
 
-def export_components_to_txt(file_path):
-    """ Export all components from database to a TXT file. """
     session = get_session()
-    components = session.query(Component).all()
-    session.close()
-
     try:
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write("Part Number | Name | Type | Value | Quantity | Purchase_link | Datasheet_link |\n")
-            file.write("-" * 100 + "\n")
-
-            for component in components:
-                file.write(f"{component.part_number or 'N/A'} | {component.name or 'N/A'} | "
-                           f"{component.component_type} | {component.value} | {component.quantity} | {component.purchase_link or 'N/A'} | {component.datasheet_link or 'N/A'}\n")
-
-        return True  # Success
+        selected_components = session.query(Component)\
+                                     .filter(Component.part_number.in_(part_numbers))\
+                                     .all()
+        return selected_components
     except Exception as e:
-        print(f"Error exporting to TXT: {e}")
-        return False  # Failure
-
-
-def import_components_from_txt(file_path):
-    """ Import components from a TXT file into the database using the Factory Pattern. """
-    session = get_session()
-
-    try:
-        with open(file_path, "r", encoding="utf-8") as file:
-            lines = file.readlines()
-
-        if len(lines) < 3:  # Ensure file has data
-            return False, "File is empty or incorrectly formatted."
-
-        for line in lines[2:]:  # Skip headers
-            parts = line.strip().split(" | ")
-            if len(parts) != 7:
-                continue  # Skip invalid lines
-
-            part_number = parts[0] if parts[0] != "N/A" else None
-            name = parts[1] if parts[1] != "N/A" else None
-            component_type = parts[2]
-            value = parts[3]
-            quantity = int(parts[4])
-            purchase_link = parts[5] if parts[5] != "N/A" else None
-            datasheet_link = parts[6] if parts[6] != "N/A" else None
-
-            if session.query(Component).filter_by(part_number=part_number).first():
-                continue  # Skip duplicates
-
-            # Use Factory Pattern to create the component
-            component = ComponentFactory.create_component(
-                component_type,
-                part_number=part_number,
-                name=name,
-                value=value,
-                quantity=quantity,
-                purchase_link=purchase_link,
-                datasheet_link=datasheet_link
-            )
-            session.add(component)
-
-        session.commit()
-        return True, "Components successfully imported."
-
-    except Exception as e:
-        session.rollback()
-        return False, f"Error importing data: {e}"
+        raise DatabaseError(f"Error selecting multiple components: {e}") from e
     finally:
         session.close()

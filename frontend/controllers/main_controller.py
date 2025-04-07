@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMessageBox, QInputDialog, QFileDialog
+from PyQt5.QtWidgets import QMessageBox, QInputDialog
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtCore import QObject, QUrl # QObject needed if using signals/slots within controller
 
@@ -8,8 +8,7 @@ from frontend.ui.add_component_dialog import AddComponentDialog
 
 # Import backend functions and exceptions
 from backend.inventory import (
-    get_all_components, add_component, remove_component_quantity,
-    import_components_from_txt, export_components_to_txt, get_component_by_part_number
+    get_all_components, add_component, remove_component_quantity, get_component_by_part_number
 )
 from backend.exceptions import (
     InvalidQuantityError, ComponentNotFoundError, StockError, DatabaseError,
@@ -27,12 +26,8 @@ class MainController(QObject): # Inherit from QObject for slots
         """ Connect signals from the view to controller slots. """
         self.view.load_data_requested.connect(self.load_inventory_data)
         self.view.add_component_requested.connect(self.open_add_component_dialog)
-        self.view.remove_component_requested.connect(self.handle_remove_component)
-        self.view.export_requested.connect(self.export_data)
-        self.view.import_requested.connect(self.import_data)
+        self.view.remove_components_requested.connect(self.handle_remove_components)
         self.view.link_clicked.connect(self.open_link_in_browser)
-        # We can directly connect the view's selection change to its own button update method
-        # Or handle it here if more complex logic is needed in the future
         self.view.table.selectionModel().selectionChanged.connect(self.view._update_remove_button_state)
 
 
@@ -78,6 +73,10 @@ class MainController(QObject): # Inherit from QObject for slots
              self._show_message("Invalid Input", f"Failed to add component: {e}", level="warning")
         except Exception as e:
             self._show_message("Unexpected Error", f"An unexpected error occurred while adding: {e}", level="critical")
+
+    def handle_remove_components(self, part_numbers: list[str]):
+        for item in part_numbers:
+            self.handle_remove_component(item)
 
     def handle_remove_component(self, part_number: str):
         """ Handle the request to remove a component quantity. """
@@ -129,51 +128,6 @@ class MainController(QObject): # Inherit from QObject for slots
             self._show_message("Database Error", f"Could not retrieve component details: {e}", level="critical")
         except Exception as e:
             self._show_message("Error", f"An unexpected error occurred: {e}", level="critical")
-
-
-    def export_data(self):
-        """ Handle exporting data to a TXT file. """
-        file_path, _ = QFileDialog.getSaveFileName(self.view, "Save Inventory", "", "Text Files (*.txt)")
-
-        if file_path:
-            # Ensure the file has a .txt extension if not provided
-            if not file_path.lower().endswith(".txt"):
-                file_path += ".txt"
-            try:
-                success = export_components_to_txt(file_path)
-                if success:
-                    self._show_message("Export Successful", f"Inventory exported to {file_path}", level="info")
-                else:
-                    # The backend function currently doesn't specify failure reasons well
-                    self._show_message("Export Failed", "Could not export data.", level="warning")
-            except DatabaseError as e:
-                 self._show_message("Export Error", f"Database error during export: {e}", level="critical")
-            except IOError as e:
-                 self._show_message("Export Error", f"Could not write to file {file_path}: {e}", level="critical")
-            except Exception as e:
-                 self._show_message("Export Error", f"An unexpected error occurred during export: {e}", level="critical")
-
-
-    def import_data(self):
-        """ Handle importing data from a TXT file. """
-        file_path, _ = QFileDialog.getOpenFileName(self.view, "Import Inventory", "", "Text Files (*.txt)")
-
-        if file_path:
-            try:
-                success, message = import_components_from_txt(file_path)
-                if success:
-                    self._show_message("Import Successful", message, level="info")
-                    self.load_inventory_data() # Refresh table on success
-                else:
-                    # Message already contains details from backend function
-                    self._show_message("Import Failed", message, level="warning")
-            except DatabaseError as e:
-                 self._show_message("Import Error", f"Database error during import: {e}", level="critical")
-            except IOError as e:
-                 self._show_message("Import Error", f"Could not read file {file_path}: {e}", level="critical")
-            except Exception as e:
-                 self._show_message("Import Error", f"An unexpected error occurred during import: {e}", level="critical")
-
 
     def open_link_in_browser(self, url: QUrl):
         """ Open the given URL in the default web browser. """
