@@ -1,4 +1,3 @@
-# toolbar.py
 from PyQt5.QtWidgets import QToolBar, QMenu, QAction, QToolButton
 from PyQt5.QtCore import Qt
 

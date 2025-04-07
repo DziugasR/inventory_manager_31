@@ -11,23 +11,29 @@ from frontend.ui.toolbar import setup_toolbar
 
 class InventoryUI(QMainWindow):
     """ Main application window UI definition. """
-    # Signals emitted when user performs actions
     add_component_requested = pyqtSignal()
-    remove_component_requested = pyqtSignal(str) # Emits part number to remove
+    remove_component_requested = pyqtSignal(str)
     export_requested = pyqtSignal()
     import_requested = pyqtSignal()
     load_data_requested = pyqtSignal()
     link_clicked = pyqtSignal(QUrl)
-
+    # File Menu
     new_inventory_triggered = pyqtSignal()
     open_inventory_triggered = pyqtSignal()
     save_inventory_triggered = pyqtSignal()
     save_inventory_as_triggered = pyqtSignal()
     exit_triggered = pyqtSignal()
+    # Edit Menu
     copy_row_triggered = pyqtSignal()
     paste_row_triggered = pyqtSignal()
     find_triggered = pyqtSignal()
-    help_triggered = pyqtSignal()
+    # Tools Menu
+    export_xls_triggered = pyqtSignal()
+    import_xls_triggered = pyqtSignal()
+    chatgpt_triggered = pyqtSignal()
+    # View Menu
+    table_size_triggered = pyqtSignal()
+    dark_mode_triggered = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -55,12 +61,6 @@ class InventoryUI(QMainWindow):
         self.remove_button.setEnabled(False) # Initially disabled
         button_layout.addWidget(self.remove_button)
 
-        self.export_button = QPushButton("Export to .TXT (Not working)") # Corrected label
-        button_layout.addWidget(self.export_button)
-
-        self.import_button = QPushButton("Import from .TXT (Not working)") # Corrected label
-        button_layout.addWidget(self.import_button)
-
         self.layout.addLayout(button_layout)
 
         # --- Table ---
@@ -77,8 +77,6 @@ class InventoryUI(QMainWindow):
         """ Connect internal UI signals. """
         self.add_button.clicked.connect(self.add_component_requested)
         self.remove_button.clicked.connect(self._on_remove_clicked)
-        self.export_button.clicked.connect(self.export_requested)
-        self.import_button.clicked.connect(self.import_requested)
 
         # Handle link clicks within the table
         self.table.cellClicked.connect(self._handle_cell_click)
