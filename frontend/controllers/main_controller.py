@@ -4,7 +4,7 @@ from PyQt5.QtCore import QObject, QUrl
 
 from frontend.ui.main_window import InventoryUI
 from frontend.ui.add_component_dialog import AddComponentDialog
-from frontend.ui.generate_ideas_dialog import GenerateIdeasDialog # Import the new dialog
+from frontend.controllers.generate_ideas_controller import GenerateIdeasController # Import the new dialog
 
 from backend.inventory import (
     get_all_components, add_component, remove_component_quantity, get_component_by_part_number
@@ -171,14 +171,12 @@ class MainController(QObject):
             self._show_message("Data Fetch Warning", error_message, level="warning")
 
         if not selected_components:
-            self._show_message("Generate Ideas", "Could not retrieve details for any selected components.", level="warning")
+            self._show_message("Generate Ideas", "Could not retrieve details for any selected components.",
+                               level="warning")
             return
 
-        # Pass the list of component *objects* to the dialog
-        dialog = GenerateIdeasDialog(selected_components, self.view)
-        # Future: Connect signals from the dialog if needed
-        # dialog.ideas_generated.connect(self.handle_generated_ideas)
-        dialog.exec_()
+        idea_controller = GenerateIdeasController(selected_components, self.view)
+        idea_controller.show()
 
     def open_link_in_browser(self, url: QUrl):
         if url and url.isValid():
