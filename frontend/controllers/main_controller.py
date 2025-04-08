@@ -1,12 +1,11 @@
 from PyQt5.QtWidgets import QMessageBox, QInputDialog
 from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtCore import QObject, QUrl # QObject needed if using signals/slots within controller
+from PyQt5.QtCore import QObject, QUrl
 
-# Import UI components
 from frontend.ui.main_window import InventoryUI
 from frontend.ui.add_component_dialog import AddComponentDialog
+from frontend.ui.generate_ideas_dialog import GenerateIdeasDialog # Import the new dialog
 
-# Import backend functions and exceptions
 from backend.inventory import (
     get_all_components, add_component, remove_component_quantity, get_component_by_part_number
 )
@@ -15,7 +14,7 @@ from backend.exceptions import (
     DuplicateComponentError, InvalidInputError
 )
 
-class MainController(QObject): # Inherit from QObject for slots
+class MainController(QObject):
     def __init__(self, view: InventoryUI):
         super().__init__()
         self.view = view
@@ -23,22 +22,17 @@ class MainController(QObject): # Inherit from QObject for slots
         self._load_initial_data()
 
     def _connect_signals(self):
-        """ Connect signals from the view to controller slots. """
         self.view.load_data_requested.connect(self.load_inventory_data)
         self.view.add_component_requested.connect(self.open_add_component_dialog)
         self.view.remove_components_requested.connect(self.handle_remove_components)
+        self.view.generate_ideas_requested.connect(self.open_generate_ideas_dialog) # Connect the signal
         self.view.link_clicked.connect(self.open_link_in_browser)
-        self.view.table.selectionModel().selectionChanged.connect(self.view._update_remove_button_state)
-
+        # Removed: self.view.table.selectionModel().selectionChanged.connect(self.view._update_remove_button_state)
 
     def _load_initial_data(self):
-        """ Load data when the application starts. """
         self.load_inventory_data()
 
-    # --- Slot Implementations ---
-
     def load_inventory_data(self):
-        """ Fetch data from backend and update the view's table. """
         try:
             components = get_all_components()
             self.view.display_data(components)
@@ -48,107 +42,137 @@ class MainController(QObject): # Inherit from QObject for slots
              self._show_message("Error", f"An unexpected error occurred while loading data: {e}", level="critical")
 
     def open_add_component_dialog(self):
-        """ Create and show the Add Component dialog. """
-        # Pass the view as parent if needed for modality
         dialog = AddComponentDialog(self.view)
-        # Connect the dialog's signal to the controller's handler
         dialog.component_data_collected.connect(self._add_new_component)
-        dialog.exec_() # Show the dialog modally
+        dialog.exec_()
 
     def _add_new_component(self, component_data: dict):
-        """ Handle the actual component addition after dialog confirms. """
         try:
-            # Basic validation already happened in dialog, now call backend
-            print(f"Controller received data to add: {component_data}") # Debug print
             add_component(**component_data)
             self._show_message("Success", f"Component '{component_data['part_number']}' added successfully.", level="info")
-            self.load_inventory_data()  # Refresh the table
+            self.load_inventory_data()
         except DuplicateComponentError as e:
             self._show_message("Duplicate Component", str(e), level="warning")
-        except InvalidQuantityError as e: # Should ideally not happen if SpinBox is used correctly
+        except InvalidQuantityError as e:
              self._show_message("Invalid Quantity", str(e), level="warning")
         except DatabaseError as e:
             self._show_message("Database Error", f"Failed to add component: {e}", level="critical")
-        except InvalidInputError as e: # Catch potential backend validation errors
+        except InvalidInputError as e:
              self._show_message("Invalid Input", f"Failed to add component: {e}", level="warning")
         except Exception as e:
             self._show_message("Unexpected Error", f"An unexpected error occurred while adding: {e}", level="critical")
 
     def handle_remove_components(self, part_numbers: list[str]):
-        for item in part_numbers:
-            self.handle_remove_component(item)
+        success_count = 0
+        failure_count = 0
+        messages = []
 
-    def handle_remove_component(self, part_number: str):
-        """ Handle the request to remove a component quantity. """
-        if not part_number:
-            self._show_message("Selection Error", "No component selected.", level="warning")
+        if not part_numbers:
+            self._show_message("Selection Error", "No components selected.", level="warning")
             return
 
-        try:
-            # Fetch current quantity to set max value for input dialog
-            # This avoids relying solely on the potentially stale table data
-            component = get_component_by_part_number(part_number)
-            if not component: # Should not happen if selected from table, but safety check
-                 raise ComponentNotFoundError(f"Component {part_number} not found in database.")
-            current_quantity = component.quantity
+        confirm = QMessageBox.question(
+            self.view,
+            "Confirm Removal",
+            f"You are about to interact with {len(part_numbers)} selected component(s).\n"
+            "Proceed with removal quantity input for each?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes
+        )
 
-            # Get user input for quantity to remove (using QInputDialog in Controller)
-            quantity_to_remove, ok = QInputDialog.getInt(
-                self.view, # Parent window
-                "Remove Quantity",
-                f"Component: {part_number}\nAvailable: {current_quantity} units\nEnter quantity to remove:",
-                value=1, min=1, max=current_quantity
-            )
+        if confirm == QMessageBox.No:
+            return
 
-            if not ok or quantity_to_remove <= 0:
-                return # User cancelled or entered invalid value
+        for part_number in part_numbers:
+            try:
+                component = get_component_by_part_number(part_number)
+                if not component:
+                     messages.append(f"- {part_number}: Not found in database.")
+                     failure_count += 1
+                     continue
+                current_quantity = component.quantity
 
-            # Confirm removal (using QMessageBox in Controller)
-            confirm = QMessageBox.question(
-                self.view, # Parent window
-                "Confirm Removal",
-                f"Are you sure you want to remove {quantity_to_remove} units of '{part_number}'?\n"
-                f"Remaining quantity will be {current_quantity - quantity_to_remove}.",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
-            )
+                quantity_to_remove, ok = QInputDialog.getInt(
+                    self.view,
+                    "Remove Quantity",
+                    f"Component: {part_number}\nAvailable: {current_quantity}\nEnter quantity to remove:",
+                    value=1, min=1, max=current_quantity
+                )
 
-            if confirm == QMessageBox.Yes:
+                if not ok:
+                     messages.append(f"- {part_number}: Removal cancelled by user.")
+                     failure_count += 1
+                     continue
+
+                if quantity_to_remove <= 0:
+                     messages.append(f"- {part_number}: Invalid quantity ({quantity_to_remove}) entered.")
+                     failure_count += 1
+                     continue
+
                 try:
                     remove_component_quantity(part_number, quantity_to_remove)
-                    self._show_message("Success", f"Removed {quantity_to_remove} units of '{part_number}'.", level="info")
-                    self.load_inventory_data() # Refresh table
+                    messages.append(f"- {part_number}: Removed {quantity_to_remove} units (remaining: {current_quantity - quantity_to_remove}).")
+                    success_count += 1
                 except (InvalidQuantityError, ComponentNotFoundError, StockError, DatabaseError) as e:
-                    self._show_message("Removal Error", str(e), level="warning")
+                    messages.append(f"- {part_number}: Removal error - {e}")
+                    failure_count += 1
                 except Exception as e:
-                     self._show_message("Unexpected Error", f"An unexpected error occurred during removal: {e}", level="critical")
+                     messages.append(f"- {part_number}: Unexpected removal error - {e}")
+                     failure_count += 1
 
-        except ComponentNotFoundError as e:
-             self._show_message("Error", str(e), level="warning") # Error fetching current quantity
-        except DatabaseError as e:
-            self._show_message("Database Error", f"Could not retrieve component details: {e}", level="critical")
-        except Exception as e:
-            self._show_message("Error", f"An unexpected error occurred: {e}", level="critical")
+            except ComponentNotFoundError as e:
+                 messages.append(f"- {part_number}: Error fetching details - {e}")
+                 failure_count += 1
+            except DatabaseError as e:
+                messages.append(f"- {part_number}: DB error fetching details - {e}")
+                failure_count += 1
+            except Exception as e:
+                messages.append(f"- {part_number}: Unexpected error - {e}")
+                failure_count += 1
+
+        summary_title = "Removal Summary"
+        summary_message = f"Processed {len(part_numbers)} component(s):\n"
+        summary_message += f"Successfully removed: {success_count}\n"
+        summary_message += f"Failed/Cancelled: {failure_count}\n\nDetails:\n" + "\n".join(messages)
+
+        if failure_count > 0:
+            self._show_message(summary_title, summary_message, level="warning")
+        else:
+            self._show_message(summary_title, summary_message, level="info")
+
+        if success_count > 0:
+            self.load_inventory_data()
+
+    # Removed the single handle_remove_component method as handle_remove_components now iterates
+
+    def open_generate_ideas_dialog(self, checked_part_numbers: list):
+        if not checked_part_numbers:
+            self._show_message("Generate Ideas", "No components selected.", level="warning")
+            return
+
+        # For now, just open the dialog. Pass checked_part_numbers if needed later.
+        # print(f"Controller opening GenerateIdeasDialog for: {checked_part_numbers}") # Optional debug
+        dialog = GenerateIdeasDialog(self.view)
+        # Future: Pass checked_part_numbers to the dialog if it needs them
+        # dialog = GenerateIdeasDialog(checked_part_numbers, self.view)
+        # Future: Connect signals from the dialog if it needs to communicate back
+        # dialog.ideas_generated.connect(self.handle_generated_ideas)
+        dialog.exec_()
 
     def open_link_in_browser(self, url: QUrl):
-        """ Open the given URL in the default web browser. """
         if url and url.isValid():
             QDesktopServices.openUrl(url)
         else:
             self._show_message("Invalid Link", "The selected link is not valid.", level="warning")
 
-    # --- Helper Methods ---
-
     def _show_message(self, title: str, text: str, level: str = "info"):
-        """ Display a message box using the main window as parent. """
         if level == "info":
             QMessageBox.information(self.view, title, text)
         elif level == "warning":
             QMessageBox.warning(self.view, title, text)
         elif level == "critical":
             QMessageBox.critical(self.view, title, text)
-        else: # Default to info
+        else:
             QMessageBox.information(self.view, title, text)
 
     def show_view(self):
-        """ Makes the main window visible. """
         self.view.show()
