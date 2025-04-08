@@ -149,12 +149,34 @@ class MainController(QObject):
             self._show_message("Generate Ideas", "No components selected.", level="warning")
             return
 
-        # For now, just open the dialog. Pass checked_part_numbers if needed later.
-        # print(f"Controller opening GenerateIdeasDialog for: {checked_part_numbers}") # Optional debug
-        dialog = GenerateIdeasDialog(self.view)
-        # Future: Pass checked_part_numbers to the dialog if it needs them
-        # dialog = GenerateIdeasDialog(checked_part_numbers, self.view)
-        # Future: Connect signals from the dialog if it needs to communicate back
+        selected_components = []
+        errors = []
+        for pn in checked_part_numbers:
+            try:
+                component = get_component_by_part_number(pn)
+                if component:
+                    selected_components.append(component)
+                else:
+                    # This case should ideally not happen if part number came from table
+                    errors.append(f"Could not find details for {pn} (already removed?).")
+            except DatabaseError as e:
+                errors.append(f"Database error fetching {pn}: {e}")
+            except Exception as e:
+                 errors.append(f"Unexpected error fetching {pn}: {e}")
+
+        if errors:
+            # Decide how to handle errors: show message and continue, or stop?
+            # Let's show a warning but still open the dialog with found components.
+            error_message = "Could not fetch details for all selected components:\n" + "\n".join(errors)
+            self._show_message("Data Fetch Warning", error_message, level="warning")
+
+        if not selected_components:
+            self._show_message("Generate Ideas", "Could not retrieve details for any selected components.", level="warning")
+            return
+
+        # Pass the list of component *objects* to the dialog
+        dialog = GenerateIdeasDialog(selected_components, self.view)
+        # Future: Connect signals from the dialog if needed
         # dialog.ideas_generated.connect(self.handle_generated_ideas)
         dialog.exec_()
 
