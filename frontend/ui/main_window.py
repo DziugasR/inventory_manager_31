@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
-    QVBoxLayout, QWidget, QHBoxLayout, QAction, QToolButton, QMenu, QCheckBox
+    QVBoxLayout, QWidget, QHBoxLayout, QCheckBox
 )
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal

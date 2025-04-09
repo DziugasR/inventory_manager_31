@@ -1,18 +1,16 @@
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QWidget,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
-    QCheckBox, QPushButton, QSpinBox, QScrollArea
+    QCheckBox, QPushButton, QSpinBox, QScrollArea, QTextEdit
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from functools import partial
 
 class GenerateIdeasDialog(QDialog):
-    # --- Signals ---
     checkbox_state_changed = pyqtSignal(int, bool)
     quantity_changed = pyqtSignal(str, int)
     generate_requested = pyqtSignal()
 
-    # --- Column Indices ---
     SELECT_COL_IDX = 0
     PART_NUMBER_COL_IDX = 1
     TYPE_COL_IDX = 2
@@ -25,23 +23,17 @@ class GenerateIdeasDialog(QDialog):
         self._spinboxes = {}
         self._quantity_control_widgets = {}
         self.setWindowTitle("Generate Project Ideas")
-        self.setGeometry(200, 200, 800, 500)
+        self.setGeometry(200, 150, 800, 600)
         self._init_ui()
 
     def _init_ui(self):
         main_layout = QHBoxLayout(self)
 
-        # --- Left Side: Component Table ---
         table_widget = QWidget()
         table_layout = QVBoxLayout(table_widget)
-
-        # Title for the left side
         left_title_label = QLabel("Selected Components:")
         table_layout.addWidget(left_title_label)
-
-        # The table itself
         self.components_table = QTableWidget()
-        # (... rest of table setup remains the same ...)
         self.components_table.setColumnCount(5)
         self.components_table.setHorizontalHeaderLabels(["Select", "Part Number", "Type", "Value", "Quantity"])
         self.components_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -59,18 +51,14 @@ class GenerateIdeasDialog(QDialog):
         self.components_table.setColumnWidth(self.PART_NUMBER_COL_IDX, 100)
         self.components_table.setColumnWidth(self.TYPE_COL_IDX, 90)
         self.components_table.setColumnWidth(self.QUANTITY_COL_IDX, 60)
-        table_layout.addWidget(self.components_table) # Add table below title
+        table_layout.addWidget(self.components_table)
 
-
-        # --- Right Side: Controls Area & Button ---
-        controls_widget = QWidget() # Changed name from placeholder_widget
+        controls_widget = QWidget()
         right_vertical_layout = QVBoxLayout(controls_widget)
 
-        # *** Add Title for the right side to match the left ***
         right_title_label = QLabel("Adjust Project Quantity:")
-        right_vertical_layout.addWidget(right_title_label) # Add title first
+        right_vertical_layout.addWidget(right_title_label)
 
-        # Scroll Area for Dynamic Controls (added *after* right title)
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -78,30 +66,52 @@ class GenerateIdeasDialog(QDialog):
         self.controls_layout = QVBoxLayout(self.controls_container)
         self.controls_layout.setAlignment(Qt.AlignTop)
         self.scroll_area.setWidget(self.controls_container)
-        right_vertical_layout.addWidget(self.scroll_area, 1) # Add scroll area below title
+        right_vertical_layout.addWidget(self.scroll_area, 1)
 
-        # Generate Button
+        response_title_label = QLabel("Generated Ideas:")
+        right_vertical_layout.addWidget(response_title_label)
+        self.response_display = QTextEdit()
+        self.response_display.setReadOnly(True)
+        self.response_display.setPlaceholderText("Click 'Generate Ideas' to get suggestions...")
+        right_vertical_layout.addWidget(self.response_display, 3)
+
         self.generate_button = QPushButton("Generate Ideas")
         self.generate_button.setMinimumHeight(50)
         self.generate_button.setStyleSheet("""
-            QPushButton { font-size: 16px; font-weight: bold; padding: 10px;
-                          background-color: #4CAF50; color: white; border-radius: 5px; }
-            QPushButton:hover { background-color: #45a049; }
-            QPushButton:pressed { background-color: #3e8e41; } """)
+            QPushButton {
+                font-size: 16px;
+                font-weight: bold;
+                color: white;
+                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                                stop: 0 #5cb85c, stop: 1 #4cae4c);
+                border: 1px solid #4cae4c;
+                border-radius: 5px;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                                stop: 0 #4cae4c, stop: 1 #449d44);
+                border: 1px solid #398439;
+            }
+            QPushButton:pressed {
+                background-color: #449d44;
+                border: 1px solid #398439;
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+                border: 1px solid #bbbbbb;
+                color: #888888;
+            }
+        """)
         self.generate_button.clicked.connect(self.generate_requested)
         right_vertical_layout.addWidget(self.generate_button, 0)
 
-        # Set the layout for the right-side container widget
         controls_widget.setLayout(right_vertical_layout)
 
-
-        # --- Add Widgets to Main Layout ---
-        main_layout.addWidget(table_widget, 3)         # Left side container
-        main_layout.addWidget(controls_widget, 2)      # Right side container
-
+        main_layout.addWidget(table_widget, 3)
+        main_layout.addWidget(controls_widget, 2)
         self.setLayout(main_layout)
 
-    # --- Methods (populate_table, add_quantity_control, etc.) remain unchanged ---
     def populate_table(self, components, type_mapping):
         self.components_table.setRowCount(len(components))
         self._checkboxes = [None] * len(components)
@@ -177,6 +187,21 @@ class GenerateIdeasDialog(QDialog):
         for pn, spinbox in self._spinboxes.items():
              values[pn] = spinbox.value()
         return values
+
+    def set_response_text(self, text):
+        self.response_display.setText(text)
+
+    def clear_response_text(self):
+        self.response_display.clear()
+
+    def show_processing(self, is_processing):
+        self.generate_button.setEnabled(not is_processing)
+        if is_processing:
+            self.response_display.setPlaceholderText("Generating ideas from ChatGPT...")
+            self.response_display.clear()
+        else:
+            if not self.response_display.toPlainText():
+                 self.response_display.setPlaceholderText("Click 'Generate Ideas' to get suggestions...")
 
     def _handle_internal_checkbox_change(self, row_index, state):
         is_checked = (state == Qt.Checked)
