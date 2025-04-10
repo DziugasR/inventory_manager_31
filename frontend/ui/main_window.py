@@ -3,9 +3,9 @@
 
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
-    QVBoxLayout, QWidget, QHBoxLayout, QCheckBox
+    QVBoxLayout, QWidget, QHBoxLayout, QCheckBox, QStyle
 )
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QLinearGradient
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
 from frontend.ui.add_component_dialog import AddComponentDialog
@@ -46,7 +46,7 @@ class InventoryUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Electronics Inventory Manager")
-        self.setGeometry(100, 100, 1060, 600)
+        self.setGeometry(100, 100, 800, 600)
         self._checkboxes = []
         self._init_ui()
         self._connect_signals()
@@ -60,15 +60,87 @@ class InventoryUI(QMainWindow):
 
         self.layout = QVBoxLayout(self.central_widget)
 
+        # --- START: Button Style Definitions ---
+        button_base_style = """
+            QPushButton {{
+                font-size: 13px;
+                font-weight: bold;
+                color: white;
+                padding: 8px 15px;
+                min-height: 32px;
+                border-radius: 4px;
+                border: 1px solid #333;
+                outline: none;
+            }}
+            QPushButton:hover {{
+                border: 1px solid #555;
+            }}
+            QPushButton:pressed {{
+                border: 1px solid #111;
+            }}
+            QPushButton:disabled {{
+                background-color: #B0B0B0;
+                border: 1px solid #999999;
+                color: #707070;
+            }}
+        """
+
+        add_button_style = button_base_style + """
+            QPushButton {{
+                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #60C460, stop: 1 #4AA04A);
+                border-color: #409040;
+            }}
+            QPushButton:hover {{
+                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #70D470, stop: 1 #5AB05A);
+                border-color: #50A050;
+            }}
+            QPushButton:pressed {{
+                background-color: #409040;
+            }}
+        """
+
+        remove_button_style = button_base_style + """
+            QPushButton {{
+                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #E06060, stop: 1 #C04040);
+                border-color: #B03030;
+            }}
+            QPushButton:hover {{
+                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #F07070, stop: 1 #D05050);
+                border-color: #C04040;
+            }}
+            QPushButton:pressed {{
+                background-color: #B03030;
+            }}
+        """
+
+        generate_button_style = button_base_style + """
+            QPushButton {{
+                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #6090E0, stop: 1 #4070C0);
+                border-color: #3060B0;
+            }}
+            QPushButton:hover {{
+                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #70A0F0, stop: 1 #5080D0);
+                border-color: #4070C0;
+            }}
+            QPushButton:pressed {{
+                background-color: #3060B0;
+            }}
+        """
+        # --- END: Button Style Definitions ---
+
         button_layout = QHBoxLayout()
+
         self.add_button = QPushButton("Add Component")
+        self.add_button.setStyleSheet(add_button_style)  # Apply Green Style
         button_layout.addWidget(self.add_button)
 
         self.remove_button = QPushButton("Remove Selected")
+        self.remove_button.setStyleSheet(remove_button_style)  # Apply Red Style
         self.remove_button.setEnabled(False)
         button_layout.addWidget(self.remove_button)
 
         self.generate_ideas_button = QPushButton("Generate Ideas")
+        self.generate_ideas_button.setStyleSheet(generate_button_style)  # Apply Blue Style
         self.generate_ideas_button.setEnabled(False)
         button_layout.addWidget(self.generate_ideas_button)
 
@@ -79,9 +151,26 @@ class InventoryUI(QMainWindow):
         self.table.setHorizontalHeaderLabels([
             "Part Number", "Name", "Type", "Value", "Quantity", "Purchase Link", "Datasheet", "Select"
         ])
+        self.table.setColumnWidth(self.PART_NUMBER_COL, 120)
+        self.table.setColumnWidth(self.NAME_COL, 150)
+        self.table.setColumnWidth(self.TYPE_COL, 100)
         self.table.setColumnWidth(self.VALUE_COL, 300)
+        self.table.setColumnWidth(self.QUANTITY_COL, 60)
+        self.table.setColumnWidth(self.PURCHASE_LINK_COL, 80)
+        self.table.setColumnWidth(self.DATASHEET_COL, 80)
         self.table.setColumnWidth(self.CHECKBOX_COL, 50)
         self.layout.addWidget(self.table)
+
+        total_width = self.table.verticalHeader().width()
+        for i in range(self.table.columnCount()):
+            total_width += self.table.columnWidth(i)
+
+        scrollbar_width = self.table.style().pixelMetric(QStyle.PM_ScrollBarExtent)
+        padding = 30
+        total_width += scrollbar_width + padding
+
+        current_height = self.height()
+        self.resize(total_width, current_height)
 
     def _connect_signals(self):
         self.add_button.clicked.connect(self.add_component_requested)
@@ -196,27 +285,21 @@ class InventoryUI(QMainWindow):
             self.table.setItem(row, self.VALUE_COL, QTableWidgetItem(component.value))
             self.table.setItem(row, self.QUANTITY_COL, QTableWidgetItem(str(component.quantity)))
 
-            if component.purchase_link:
-                purchase_item = QTableWidgetItem("Link")
-                purchase_item.setForeground(QColor("blue"))
-                purchase_item.setTextAlignment(Qt.AlignCenter)
-                url = QUrl(component.purchase_link)
-                if not url.scheme(): url.setScheme("http")
-                purchase_item.setData(Qt.UserRole, url)
-                self.table.setItem(row, self.PURCHASE_LINK_COL, purchase_item)
-            else:
-                self.table.setItem(row, self.PURCHASE_LINK_COL, QTableWidgetItem(""))
+            def set_link_item(row, col, link):
+                if link:
+                    item = QTableWidgetItem("Link")
+                    item.setForeground(QColor("blue"))
+                    item.setTextAlignment(Qt.AlignCenter)
+                    url = QUrl(link)
+                    if not url.scheme():
+                        url.setScheme("http")
+                    item.setData(Qt.UserRole, url)
+                else:
+                    item = QTableWidgetItem("")
+                self.table.setItem(row, col, item)
 
-            if component.datasheet_link:
-                datasheet_item = QTableWidgetItem("Link")
-                datasheet_item.setForeground(QColor("blue"))
-                datasheet_item.setTextAlignment(Qt.AlignCenter)
-                url = QUrl(component.datasheet_link)
-                if not url.scheme(): url.setScheme("http")
-                datasheet_item.setData(Qt.UserRole, url)
-                self.table.setItem(row, self.DATASHEET_COL, datasheet_item)
-            else:
-                 self.table.setItem(row, self.DATASHEET_COL, QTableWidgetItem(""))
+            set_link_item(row, self.PURCHASE_LINK_COL, component.purchase_link)
+            set_link_item(row, self.DATASHEET_COL, component.datasheet_link)
 
             checkbox = QCheckBox()
             cell_widget = QWidget()
