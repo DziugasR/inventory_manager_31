@@ -60,26 +60,6 @@ def remove_component_quantity(part_number, quantity):
     finally:
         session.close()
 
-# TODO: WTF?
-# def remove_component_by_part_number(part_number):
-#     """Removes a component from the database using the part number."""
-#     session = get_session()
-#     try:
-#         component = session.query(Component).filter_by(part_number=part_number).first()
-#         if not component:
-#             raise ComponentNotFoundError(f"Component with part number {part_number} not found")
-#
-#         session.delete(component)
-#         session.commit()
-#         return True
-#     except Exception as e:
-#         session.rollback()
-#         if not isinstance(e, ComponentError):
-#             raise DatabaseError(f"Error while deleting component: {e}") from e
-#         raise
-#     finally:
-#         session.close()
-
 def get_component_by_part_number(part_number: str) -> Component | None:
     session = get_session()
     try:

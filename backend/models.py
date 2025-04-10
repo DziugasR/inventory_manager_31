@@ -4,7 +4,6 @@ from abc import abstractmethod
 
 Base = declarative_base()
 
-
 class Component(Base):
     __tablename__ = "components"
 

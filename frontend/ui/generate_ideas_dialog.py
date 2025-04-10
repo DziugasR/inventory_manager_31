@@ -1,3 +1,5 @@
+#TODO Remove the option to select the selected components, in the left table should be the option to select quanity.
+
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QWidget,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,

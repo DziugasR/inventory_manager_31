@@ -6,6 +6,7 @@ class ChatGPTService:
     def __init__(self):
         load_dotenv()
         self.api_key = os.getenv("OPENAI_API_KEY")
+
         if not self.api_key:
             print("Warning: OPENAI_API_KEY environment variable not set.")
             self.client = None
@@ -27,12 +28,12 @@ class ChatGPTService:
         try:
             print(f"Sending prompt to ChatGPT:\n---\n{prompt}\n---")
             response = self.client.chat.completions.create(
-                model="o3-mini",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
-                #temperature=0.7,
-                max_completion_tokens=1000
+                temperature=0.7,
+                max_tokens=1000
             )
             if response.choices:
                 generated_text = response.choices[0].message.content.strip()

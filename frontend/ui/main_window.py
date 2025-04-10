@@ -1,3 +1,6 @@
+#TODO eliminate empty spaces between component table and main window
+#TODO Better looking Add, Remove, Generate buttons
+
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
     QVBoxLayout, QWidget, QHBoxLayout, QCheckBox
