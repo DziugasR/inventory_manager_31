@@ -60,88 +60,100 @@ class InventoryUI(QMainWindow):
 
         self.layout = QVBoxLayout(self.central_widget)
 
-        # --- START: Button Style Definitions ---
-        button_base_style = """
-            QPushButton {{
-                font-size: 13px;
-                font-weight: bold;
-                color: white;
-                padding: 8px 15px;
-                min-height: 32px;
+        add_button_style = """
+            QPushButton#addButton {
+                font-size: 13px; font-weight: bold; color: white;
+                /* --- Adjusted Size --- */
+                padding: 6px 10px;
+                min-height: 30px;
+                /* --------------------- */
                 border-radius: 4px;
-                border: 1px solid #333;
+                background-color: #5cb85c; /* Solid Green */
+                border: 1px solid #4cae4c;
                 outline: none;
-            }}
-            QPushButton:hover {{
-                border: 1px solid #555;
-            }}
-            QPushButton:pressed {{
-                border: 1px solid #111;
-            }}
-            QPushButton:disabled {{
-                background-color: #B0B0B0;
-                border: 1px solid #999999;
-                color: #707070;
-            }}
+            }
+            QPushButton#addButton:hover {
+                background-color: #4cae4c;
+                border-color: #398439;
+            }
+            QPushButton#addButton:pressed {
+                background-color: #449d44;
+                border-color: #398439;
+            }
+            QPushButton#addButton:disabled {
+                background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
+                /* Adjust disabled padding/min-height if needed, but usually inherited */
+            }
         """
 
-        add_button_style = button_base_style + """
-            QPushButton {{
-                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #60C460, stop: 1 #4AA04A);
-                border-color: #409040;
-            }}
-            QPushButton:hover {{
-                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #70D470, stop: 1 #5AB05A);
-                border-color: #50A050;
-            }}
-            QPushButton:pressed {{
-                background-color: #409040;
-            }}
+        remove_button_style = """
+            QPushButton#removeButton {
+                font-size: 13px; font-weight: bold; color: white;
+                /* --- Adjusted Size --- */
+                padding: 6px 10px;
+                min-height: 30px;
+                /* --------------------- */
+                border-radius: 4px;
+                background-color: #d9534f; /* Solid Red */
+                border: 1px solid #d43f3a;
+                outline: none;
+            }
+            QPushButton#removeButton:hover {
+                background-color: #c9302c;
+                border-color: #ac2925;
+            }
+            QPushButton#removeButton:pressed {
+                background-color: #ac2925;
+                border-color: #8b221f;
+            }
+            QPushButton#removeButton:disabled {
+                background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
+            }
         """
 
-        remove_button_style = button_base_style + """
-            QPushButton {{
-                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #E06060, stop: 1 #C04040);
-                border-color: #B03030;
-            }}
-            QPushButton:hover {{
-                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #F07070, stop: 1 #D05050);
-                border-color: #C04040;
-            }}
-            QPushButton:pressed {{
-                background-color: #B03030;
-            }}
+        generate_button_style = """
+            QPushButton#generateButton {
+                font-size: 13px; font-weight: bold; color: white;
+                /* --- Adjusted Size --- */
+                padding: 6px 10px;
+                min-height: 30px;
+                /* --------------------- */
+                border-radius: 4px;
+                background-color: #337ab7; /* Solid Blue */
+                border: 1px solid #2e6da4;
+                outline: none;
+            }
+            QPushButton#generateButton:hover {
+                background-color: #286090;
+                border-color: #204d74;
+            }
+            QPushButton#generateButton:pressed {
+                background-color: #204d74;
+                border-color: #1a4161;
+            }
+            QPushButton#generateButton:disabled {
+                background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
+            }
         """
-
-        generate_button_style = button_base_style + """
-            QPushButton {{
-                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #6090E0, stop: 1 #4070C0);
-                border-color: #3060B0;
-            }}
-            QPushButton:hover {{
-                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #70A0F0, stop: 1 #5080D0);
-                border-color: #4070C0;
-            }}
-            QPushButton:pressed {{
-                background-color: #3060B0;
-            }}
-        """
-        # --- END: Button Style Definitions ---
 
         button_layout = QHBoxLayout()
 
         self.add_button = QPushButton("Add Component")
-        self.add_button.setStyleSheet(add_button_style)  # Apply Green Style
-        button_layout.addWidget(self.add_button)
+        self.add_button.setObjectName("addButton")
+        self.add_button.setStyleSheet(add_button_style)
 
         self.remove_button = QPushButton("Remove Selected")
-        self.remove_button.setStyleSheet(remove_button_style)  # Apply Red Style
+        self.remove_button.setObjectName("removeButton")
+        self.remove_button.setStyleSheet(remove_button_style)
         self.remove_button.setEnabled(False)
-        button_layout.addWidget(self.remove_button)
 
         self.generate_ideas_button = QPushButton("Generate Ideas")
-        self.generate_ideas_button.setStyleSheet(generate_button_style)  # Apply Blue Style
+        self.generate_ideas_button.setObjectName("generateButton")
+        self.generate_ideas_button.setStyleSheet(generate_button_style)
         self.generate_ideas_button.setEnabled(False)
+
+        button_layout.addWidget(self.add_button)
+        button_layout.addWidget(self.remove_button)
         button_layout.addWidget(self.generate_ideas_button)
 
         self.layout.addLayout(button_layout)

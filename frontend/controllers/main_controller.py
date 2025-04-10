@@ -27,7 +27,6 @@ class MainController(QObject):
         self.view.remove_components_requested.connect(self.handle_remove_components)
         self.view.generate_ideas_requested.connect(self.open_generate_ideas_dialog) # Connect the signal
         self.view.link_clicked.connect(self.open_link_in_browser)
-        # Removed: self.view.table.selectionModel().selectionChanged.connect(self.view._update_remove_button_state)
 
     def _load_initial_data(self):
         self.load_inventory_data()
