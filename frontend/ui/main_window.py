@@ -11,6 +11,8 @@ from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 from frontend.ui.add_component_dialog import AddComponentDialog
 from frontend.ui.toolbar import setup_toolbar
 
+from pathlib import Path
+
 class InventoryUI(QMainWindow):
     add_component_requested = pyqtSignal()
     remove_components_requested = pyqtSignal(list)
@@ -52,6 +54,19 @@ class InventoryUI(QMainWindow):
         self._connect_signals()
         self._connect_toolbar_signals()
 
+    def _load_stylesheet(self, filename="styles/button_styles.qss"):
+        script_dir = Path(__file__).parent
+        style_path = script_dir / filename
+        try:
+            with open(style_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            print(f"Warning: Stylesheet not found at {style_path}")
+            return ""  # Return empty string if not found to avoid errors
+        except Exception as e:
+            print(f"Warning: Error reading stylesheet {style_path}: {e}")
+            return ""
+
     def _init_ui(self):
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
@@ -60,96 +75,19 @@ class InventoryUI(QMainWindow):
 
         self.layout = QVBoxLayout(self.central_widget)
 
-        add_button_style = """
-            QPushButton#addButton {
-                font-size: 13px; font-weight: bold; color: white;
-                /* --- Adjusted Size --- */
-                padding: 6px 10px;
-                min-height: 30px;
-                /* --------------------- */
-                border-radius: 4px;
-                background-color: #5cb85c; /* Solid Green */
-                border: 1px solid #4cae4c;
-                outline: none;
-            }
-            QPushButton#addButton:hover {
-                background-color: #4cae4c;
-                border-color: #398439;
-            }
-            QPushButton#addButton:pressed {
-                background-color: #449d44;
-                border-color: #398439;
-            }
-            QPushButton#addButton:disabled {
-                background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
-                /* Adjust disabled padding/min-height if needed, but usually inherited */
-            }
-        """
-
-        remove_button_style = """
-            QPushButton#removeButton {
-                font-size: 13px; font-weight: bold; color: white;
-                /* --- Adjusted Size --- */
-                padding: 6px 10px;
-                min-height: 30px;
-                /* --------------------- */
-                border-radius: 4px;
-                background-color: #d9534f; /* Solid Red */
-                border: 1px solid #d43f3a;
-                outline: none;
-            }
-            QPushButton#removeButton:hover {
-                background-color: #c9302c;
-                border-color: #ac2925;
-            }
-            QPushButton#removeButton:pressed {
-                background-color: #ac2925;
-                border-color: #8b221f;
-            }
-            QPushButton#removeButton:disabled {
-                background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
-            }
-        """
-
-        generate_button_style = """
-            QPushButton#generateButton {
-                font-size: 13px; font-weight: bold; color: white;
-                /* --- Adjusted Size --- */
-                padding: 6px 10px;
-                min-height: 30px;
-                /* --------------------- */
-                border-radius: 4px;
-                background-color: #337ab7; /* Solid Blue */
-                border: 1px solid #2e6da4;
-                outline: none;
-            }
-            QPushButton#generateButton:hover {
-                background-color: #286090;
-                border-color: #204d74;
-            }
-            QPushButton#generateButton:pressed {
-                background-color: #204d74;
-                border-color: #1a4161;
-            }
-            QPushButton#generateButton:disabled {
-                background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
-            }
-        """
+        button_stylesheet = self._load_stylesheet()
 
         button_layout = QHBoxLayout()
 
         self.add_button = QPushButton("Add Component")
         self.add_button.setObjectName("addButton")
-        self.add_button.setStyleSheet(add_button_style)
 
         self.remove_button = QPushButton("Remove Selected")
         self.remove_button.setObjectName("removeButton")
-        self.remove_button.setStyleSheet(remove_button_style)
         self.remove_button.setEnabled(False)
 
         self.generate_ideas_button = QPushButton("Generate Ideas")
         self.generate_ideas_button.setObjectName("generateButton")
-        self.generate_ideas_button.setStyleSheet(generate_button_style)
         self.generate_ideas_button.setEnabled(False)
 
         button_layout.addWidget(self.add_button)
@@ -173,16 +111,10 @@ class InventoryUI(QMainWindow):
         self.table.setColumnWidth(self.CHECKBOX_COL, 50)
         self.layout.addWidget(self.table)
 
-        total_width = self.table.verticalHeader().width()
-        for i in range(self.table.columnCount()):
-            total_width += self.table.columnWidth(i)
+        if button_stylesheet:
+            self.central_widget.setStyleSheet(button_stylesheet)
 
-        scrollbar_width = self.table.style().pixelMetric(QStyle.PM_ScrollBarExtent)
-        padding = 30
-        total_width += scrollbar_width + padding
-
-        current_height = self.height()
-        self.resize(total_width, current_height)
+        self._adjust_window_width()
 
     def _connect_signals(self):
         self.add_button.clicked.connect(self.add_component_requested)
@@ -209,6 +141,23 @@ class InventoryUI(QMainWindow):
             self.find_action.triggered.connect(self.find_triggered)
         if hasattr(self, 'help_action') and hasattr(self, 'help_triggered'):
              self.help_action.triggered.connect(self.help_triggered)
+
+    def _adjust_window_width(self):
+        """Adjusts window width to fit table contents."""
+        # (Keep this method as it was)
+        total_width = self.table.verticalHeader().width()
+        for i in range(self.table.columnCount()):
+            total_width += self.table.columnWidth(i)
+
+        scrollbar_width = 0
+        if self.table.verticalScrollBar().isVisible():
+            scrollbar_width = self.table.style().pixelMetric(QStyle.PM_ScrollBarExtent)
+
+        padding = 30
+        target_width = total_width + scrollbar_width + padding
+
+        current_height = self.height()
+        self.resize(int(target_width), current_height)
 
     def _on_remove_clicked(self):
         part_numbers_to_remove = self.get_checked_part_numbers()
