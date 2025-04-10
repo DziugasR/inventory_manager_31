@@ -3,7 +3,7 @@
 
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
-    QVBoxLayout, QWidget, QHBoxLayout, QCheckBox, QStyle
+    QVBoxLayout, QWidget, QHBoxLayout, QCheckBox, QStyle, QAbstractItemView
 )
 from PyQt5.QtGui import QColor, QLinearGradient
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
@@ -97,6 +97,11 @@ class InventoryUI(QMainWindow):
         self.layout.addLayout(button_layout)
 
         self.table = QTableWidget()
+
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+
+        self.table.setSortingEnabled(True)
+
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
             "Part Number", "Name", "Type", "Value", "Quantity", "Purchase Link", "Datasheet", "Select"
@@ -105,8 +110,8 @@ class InventoryUI(QMainWindow):
         self.table.setColumnWidth(self.NAME_COL, 150)
         self.table.setColumnWidth(self.TYPE_COL, 100)
         self.table.setColumnWidth(self.VALUE_COL, 300)
-        self.table.setColumnWidth(self.QUANTITY_COL, 60)
-        self.table.setColumnWidth(self.PURCHASE_LINK_COL, 80)
+        self.table.setColumnWidth(self.QUANTITY_COL, 70)
+        self.table.setColumnWidth(self.PURCHASE_LINK_COL, 90)
         self.table.setColumnWidth(self.DATASHEET_COL, 80)
         self.table.setColumnWidth(self.CHECKBOX_COL, 50)
         self.layout.addWidget(self.table)
@@ -169,7 +174,6 @@ class InventoryUI(QMainWindow):
         if checked_part_numbers:
             self.generate_ideas_requested.emit(checked_part_numbers)
 
-
     def _handle_cell_click(self, row, column):
         if column in [self.PURCHASE_LINK_COL, self.DATASHEET_COL]:
             item = self.table.item(row, column)
@@ -222,6 +226,7 @@ class InventoryUI(QMainWindow):
         return data
 
     def display_data(self, components):
+
         self.table.setRowCount(0)
         self._checkboxes.clear()
 
@@ -232,10 +237,14 @@ class InventoryUI(QMainWindow):
 
         self.table.setRowCount(len(components))
 
-        # Need AddComponentDialog just for the mapping temporarily
-        temp_dialog = AddComponentDialog()
-        backend_to_ui_name_mapping = {v: k for k, v in temp_dialog.ui_to_backend_name_mapping.items()}
-        del temp_dialog # Clean up temporary instance
+        try:
+            temp_dialog = AddComponentDialog()
+            backend_to_ui_name_mapping = {v: k for k, v in temp_dialog.ui_to_backend_name_mapping.items()}
+            del temp_dialog
+        except NameError:
+             backend_to_ui_name_mapping = {}
+             print("Warning: AddComponentDialog not found, using raw backend names.")
+
 
         for row, component in enumerate(components):
             ui_component_type = backend_to_ui_name_mapping.get(component.component_type, component.component_type)
@@ -243,8 +252,16 @@ class InventoryUI(QMainWindow):
             self.table.setItem(row, self.PART_NUMBER_COL, QTableWidgetItem(component.part_number or ""))
             self.table.setItem(row, self.NAME_COL, QTableWidgetItem(component.name or ""))
             self.table.setItem(row, self.TYPE_COL, QTableWidgetItem(ui_component_type))
-            self.table.setItem(row, self.VALUE_COL, QTableWidgetItem(component.value))
-            self.table.setItem(row, self.QUANTITY_COL, QTableWidgetItem(str(component.quantity)))
+            self.table.setItem(row, self.VALUE_COL, QTableWidgetItem(component.value or "")) # Handle None value
+
+            qty_item = QTableWidgetItem()
+            try:
+                numeric_quantity = int(component.quantity)
+                qty_item.setData(Qt.EditRole, numeric_quantity)
+            except (ValueError, TypeError):
+                 qty_item.setData(Qt.EditRole, str(component.quantity))
+            qty_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.table.setItem(row, self.QUANTITY_COL, qty_item)
 
             def set_link_item(row, col, link):
                 if link:
@@ -278,5 +295,8 @@ class InventoryUI(QMainWindow):
             item.setFlags(item.flags() & ~Qt.ItemIsEditable & ~Qt.ItemIsSelectable)
             self.table.setItem(row, self.CHECKBOX_COL, item)
 
+        self.table.sortByColumn(self.PART_NUMBER_COL, Qt.AscendingOrder)
+
         self.table.clearSelection()
         self._update_buttons_state_on_checkbox()
+        self._adjust_window_width()
