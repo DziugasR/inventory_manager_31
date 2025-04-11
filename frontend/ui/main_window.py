@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
     QVBoxLayout, QWidget, QHBoxLayout, QCheckBox, QStyle, QAbstractItemView
 )
-from PyQt5.QtGui import QColor, QLinearGradient
+from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
 from frontend.ui.add_component_dialog import AddComponentDialog
@@ -223,25 +223,31 @@ class InventoryUI(QMainWindow):
         return data
 
     def display_data(self, components):
+        self.table.setSortingEnabled(False)
 
         self.table.setRowCount(0)
         self._checkboxes.clear()
 
         if not components:
-             self.table.setRowCount(0)
-             self._update_buttons_state_on_checkbox()
-             return
+            self.table.setRowCount(0)
+            self._update_buttons_state_on_checkbox()
+            self.table.setSortingEnabled(True)
+            return
 
         self.table.setRowCount(len(components))
 
         try:
-            temp_dialog = AddComponentDialog()
-            backend_to_ui_name_mapping = {v: k for k, v in temp_dialog.ui_to_backend_name_mapping.items()}
-            del temp_dialog
+            if not hasattr(self, '_backend_to_ui_map_cache'):
+                temp_dialog = AddComponentDialog()
+                self._backend_to_ui_map_cache = {v: k for k, v in temp_dialog.ui_to_backend_name_mapping.items()}
+                del temp_dialog
+            backend_to_ui_name_mapping = self._backend_to_ui_map_cache
         except NameError:
-             backend_to_ui_name_mapping = {}
-             print("Warning: AddComponentDialog not found, using raw backend names.")
-
+            backend_to_ui_name_mapping = {}
+            print("Warning: AddComponentDialog not found, using raw backend names.")
+        except Exception as e:
+            backend_to_ui_name_mapping = {}
+            print(f"Warning: Error getting name mapping: {e}")
 
         for row, component in enumerate(components):
             ui_component_type = backend_to_ui_name_mapping.get(component.component_type, component.component_type)
@@ -249,14 +255,14 @@ class InventoryUI(QMainWindow):
             self.table.setItem(row, self.PART_NUMBER_COL, QTableWidgetItem(component.part_number or ""))
             self.table.setItem(row, self.NAME_COL, QTableWidgetItem(component.name or ""))
             self.table.setItem(row, self.TYPE_COL, QTableWidgetItem(ui_component_type))
-            self.table.setItem(row, self.VALUE_COL, QTableWidgetItem(component.value or "")) # Handle None value
+            self.table.setItem(row, self.VALUE_COL, QTableWidgetItem(component.value or ""))
 
             qty_item = QTableWidgetItem()
             try:
                 numeric_quantity = int(component.quantity)
                 qty_item.setData(Qt.EditRole, numeric_quantity)
             except (ValueError, TypeError):
-                 qty_item.setData(Qt.EditRole, str(component.quantity))
+                qty_item.setData(Qt.EditRole, str(component.quantity or '0'))
             qty_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.table.setItem(row, self.QUANTITY_COL, qty_item)
 
@@ -264,6 +270,7 @@ class InventoryUI(QMainWindow):
                 if link:
                     item = QTableWidgetItem("Link")
                     item.setForeground(QColor("blue"))
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable | Qt.ItemIsSelectable)
                     item.setTextAlignment(Qt.AlignCenter)
                     url = QUrl(link)
                     if not url.scheme():
@@ -271,6 +278,7 @@ class InventoryUI(QMainWindow):
                     item.setData(Qt.UserRole, url)
                 else:
                     item = QTableWidgetItem("")
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable & ~Qt.ItemIsSelectable)
                 self.table.setItem(row, col, item)
 
             set_link_item(row, self.PURCHASE_LINK_COL, component.purchase_link)
@@ -288,10 +296,11 @@ class InventoryUI(QMainWindow):
             self._checkboxes.append(checkbox)
 
             self.table.setCellWidget(row, self.CHECKBOX_COL, cell_widget)
-            item = QTableWidgetItem()
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable & ~Qt.ItemIsSelectable)
-            self.table.setItem(row, self.CHECKBOX_COL, item)
+            item_for_checkbox_cell = QTableWidgetItem()
+            item_for_checkbox_cell.setFlags(Qt.ItemIsEnabled)
+            self.table.setItem(row, self.CHECKBOX_COL, item_for_checkbox_cell)
 
+        self.table.setSortingEnabled(True)
         self.table.sortByColumn(self.PART_NUMBER_COL, Qt.AscendingOrder)
 
         self.table.clearSelection()
