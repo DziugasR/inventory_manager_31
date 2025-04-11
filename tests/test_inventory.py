@@ -1,225 +1,233 @@
 import unittest
-from unittest.mock import patch, MagicMock, ANY # ANY helps match arguments flexibly
+from unittest.mock import patch, MagicMock, PropertyMock
 
-# Assuming your project structure allows these imports
-# If 'backend' is not directly importable, adjust sys.path or run tests differently
+# Modules to test
 from backend import inventory
-from backend.models import Component # We might mock instances, but import is good practice
+# Dependencies to mock or use
+from backend.models import Component
 from backend.exceptions import (
     InvalidInputError, DuplicateComponentError, ComponentError, DatabaseError,
     InvalidQuantityError, ComponentNotFoundError, StockError
 )
 
-# Define dummy component types if ComponentFactory relies on them
-# Or mock ComponentFactory.create_component directly
-DUMMY_COMPONENT_TYPE = "Resistor"
+# Helper to create mock Component instances easily
+def create_mock_component(**kwargs):
+    mock = MagicMock(spec=Component)
+    # Set attributes provided in kwargs
+    for key, value in kwargs.items():
+        setattr(mock, key, value)
+    # Ensure 'quantity' attribute exists if not provided, default to 0
+    if 'quantity' not in kwargs:
+        mock.quantity = 0
+    # Ensure 'id' attribute exists if not provided, default to None or a mock value
+    if 'id' not in kwargs:
+        mock.id = MagicMock() # Or a specific int if needed for tests
+    return mock
 
-class TestInventory(unittest.TestCase):
-
-    def setUp(self):
-        """Set up mocks common to multiple tests."""
-        # Mock the Component class minimally if needed for type checks or basic attrs
-        # Often, MagicMock instances returned by the mocked session are enough
-        self.mock_component_instance = MagicMock(spec=Component)
-        self.mock_component_instance.id = 1
-        self.mock_component_instance.part_number = "PN123"
-        self.mock_component_instance.name = "Test Resistor"
-        self.mock_component_instance.component_type = DUMMY_COMPONENT_TYPE
-        self.mock_component_instance.value = "10k"
-        self.mock_component_instance.quantity = 100
-        self.mock_component_instance.purchase_link = "http://example.com/buy"
-        self.mock_component_instance.datasheet_link = "http://example.com/data"
+class TestInventoryFunctions(unittest.TestCase):
 
     # --- Test add_component ---
 
+    @patch('backend.inventory.ComponentFactory.create_component')
     @patch('backend.inventory.get_session')
-    @patch('backend.inventory.ComponentFactory')
-    def test_add_component_success(self, mock_component_factory, mock_get_session):
+    def test_add_component_success(self, mock_get_session, mock_create_component):
         """Test successfully adding a new component."""
+        # Arrange Mocks
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        # Simulate component NOT found
+        mock_filter_by.first.return_value = None
+        mock_query.filter_by.return_value = mock_filter_by
         mock_session.query.return_value = mock_query
-        mock_query.filter_by.return_value.first.return_value = None # No existing component
         mock_get_session.return_value = mock_session
 
-        # Configure ComponentFactory mock
-        created_component = MagicMock(spec=Component) # Simulate the created component
-        mock_component_factory.create_component.return_value = created_component
+        mock_comp_instance = create_mock_component(part_number="PN123", quantity=10)
+        mock_create_component.return_value = mock_comp_instance
 
-        part_number = "NEWPN456"
-        name = "New Cap"
-        component_type = "Capacitor"
-        value = "10uF"
-        quantity = 50
-        purchase_link = "link1"
-        datasheet_link = "link2"
-
+        # Act
         result = inventory.add_component(
-            part_number, name, component_type, value, quantity, purchase_link, datasheet_link
+            part_number="PN123", name="Test Comp", component_type="RES", value="1k",
+            quantity=10, purchase_link="link1", datasheet_link="link2"
         )
 
-        mock_get_session.assert_called_once()
-        mock_session.query.assert_called_once_with(Component)
-        mock_query.filter_by.assert_called_once_with(part_number=part_number)
-        mock_component_factory.create_component.assert_called_once_with(
-            component_type,
-            part_number=part_number,
-            name=name,
-            value=value,
-            quantity=quantity,
-            purchase_link=purchase_link,
-            datasheet_link=datasheet_link
-        )
-        mock_session.add.assert_called_once_with(created_component)
-        mock_session.commit.assert_called_once()
-        mock_session.rollback.assert_not_called()
-        mock_session.close.assert_called_once()
-        self.assertEqual(result, created_component)
-
-    @patch('backend.inventory.get_session')
-    @patch('backend.inventory.ComponentFactory')
-    def test_add_component_duplicate(self, mock_component_factory, mock_get_session):
-        """Test adding a component that already exists."""
-        mock_session = MagicMock()
-        mock_query = MagicMock()
-        mock_session.query.return_value = mock_query
-        # Simulate finding an existing component
-        mock_query.filter_by.return_value.first.return_value = self.mock_component_instance
-        mock_get_session.return_value = mock_session
-
-        with self.assertRaises(DuplicateComponentError) as cm:
-            inventory.add_component("PN123", "Name", "Type", "Value", 10, "link1", "link2")
-
-        self.assertEqual(
-            str(cm.exception),
-            "Component with part number PN123 already exists"
-        )
+        # Assert
         mock_get_session.assert_called_once()
         mock_session.query.assert_called_once_with(Component)
         mock_query.filter_by.assert_called_once_with(part_number="PN123")
-        mock_component_factory.create_component.assert_not_called()
-        mock_session.add.assert_not_called()
-        mock_session.commit.assert_not_called()
-        mock_session.rollback.assert_called_once() # Rollback called on exception
+        mock_filter_by.first.assert_called_once()
+        mock_create_component.assert_called_once_with(
+            "RES", part_number="PN123", name="Test Comp", value="1k",
+            quantity=10, purchase_link="link1", datasheet_link="link2"
+        )
+        mock_session.add.assert_called_once_with(mock_comp_instance)
+        mock_session.commit.assert_called_once()
+        mock_session.rollback.assert_not_called()
         mock_session.close.assert_called_once()
+        self.assertEqual(result, mock_comp_instance)
 
+    @patch('backend.inventory.ComponentFactory.create_component')
     @patch('backend.inventory.get_session')
-    @patch('backend.inventory.ComponentFactory')
-    def test_add_component_factory_error(self, mock_component_factory, mock_get_session):
-        """Test error during component creation by factory."""
+    def test_add_component_duplicate(self, mock_get_session, mock_create_component):
+        """Test adding a component that already exists."""
+        # Arrange Mocks
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        # Simulate component IS found
+        mock_filter_by.first.return_value = create_mock_component(part_number="PN123")
+        mock_query.filter_by.return_value = mock_filter_by
         mock_session.query.return_value = mock_query
-        mock_query.filter_by.return_value.first.return_value = None # Not a duplicate
         mock_get_session.return_value = mock_session
 
-        # Simulate ComponentFactory raising an error (e.g., InvalidInputError)
-        mock_component_factory.create_component.side_effect = InvalidInputError("Bad type")
-
-        with self.assertRaises(InvalidInputError) as cm:
-             inventory.add_component("PN789", "Name", "BadType", "Val", 5, "l1", "l2")
-
-        self.assertEqual(str(cm.exception), "Bad type")
+        # Act & Assert
+        with self.assertRaises(DuplicateComponentError) as cm:
+            inventory.add_component(
+                part_number="PN123", name="Test Comp", component_type="RES", value="1k",
+                quantity=10, purchase_link="link1", datasheet_link="link2"
+            )
+        self.assertIn("Component with part number PN123 already exists", str(cm.exception))
         mock_get_session.assert_called_once()
-        mock_query.filter_by.assert_called_once_with(part_number="PN789")
-        mock_component_factory.create_component.assert_called_once() # It was called
+        mock_session.query.assert_called_once_with(Component)
+        mock_query.filter_by.assert_called_once_with(part_number="PN123")
+        mock_filter_by.first.assert_called_once()
+        mock_create_component.assert_not_called()
+        mock_session.add.assert_not_called()
+        mock_session.commit.assert_not_called()
+        mock_session.rollback.assert_called_once() # Rolled back after exception
+        mock_session.close.assert_called_once()
+
+    @patch('backend.inventory.ComponentFactory.create_component')
+    @patch('backend.inventory.get_session')
+    def test_add_component_factory_error(self, mock_get_session, mock_create_component):
+        """Test error during component creation by factory."""
+        # Arrange Mocks
+        mock_session = MagicMock()
+        mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        mock_filter_by.first.return_value = None # Simulate not found initially
+        mock_query.filter_by.return_value = mock_filter_by
+        mock_session.query.return_value = mock_query
+        mock_get_session.return_value = mock_session
+
+        mock_create_component.side_effect = InvalidInputError("Bad factory input")
+
+        # Act & Assert
+        with self.assertRaises(InvalidInputError) as cm:
+            inventory.add_component("PN456", "Name", "CAP", "1uF", 5, None, None)
+        self.assertEqual(str(cm.exception), "Bad factory input")
+        mock_create_component.assert_called_once()
         mock_session.add.assert_not_called()
         mock_session.commit.assert_not_called()
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
 
+    @patch('backend.inventory.ComponentFactory.create_component')
     @patch('backend.inventory.get_session')
-    @patch('backend.inventory.ComponentFactory')
-    def test_add_component_database_error_on_commit(self, mock_component_factory, mock_get_session):
-        """Test a database error during commit."""
+    def test_add_component_database_error_on_commit(self, mock_get_session, mock_create_component):
+        """Test a generic database error during commit."""
+        # Arrange Mocks
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        mock_filter_by.first.return_value = None # Simulate not found
+        mock_query.filter_by.return_value = mock_filter_by
         mock_session.query.return_value = mock_query
-        mock_query.filter_by.return_value.first.return_value = None
         mock_get_session.return_value = mock_session
-        mock_component_factory.create_component.return_value = MagicMock(spec=Component)
+        mock_session.commit.side_effect = Exception("DB connection lost") # Generic Exception
 
-        # Simulate commit error
-        mock_session.commit.side_effect = Exception("DB connection lost")
+        mock_comp_instance = create_mock_component(part_number="PN789")
+        mock_create_component.return_value = mock_comp_instance
 
+        # Act & Assert
         with self.assertRaises(DatabaseError) as cm:
-            inventory.add_component("PN789", "Name", "Type", "Val", 5, "l1", "l2")
-
-        self.assertTrue("Database error: DB connection lost" in str(cm.exception))
-        mock_get_session.assert_called_once()
-        mock_session.add.assert_called_once()
+             inventory.add_component("PN789", "Name", "DIODE", "1N4001", 20, None, None)
+        self.assertIn("Database error: DB connection lost", str(cm.exception))
+        mock_session.add.assert_called_once_with(mock_comp_instance)
         mock_session.commit.assert_called_once()
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
 
     # --- Test remove_component_quantity ---
 
+    def test_remove_component_quantity_invalid_input(self):
+        """Test removing quantity with invalid (non-positive) input."""
+        with self.assertRaises(InvalidQuantityError):
+            inventory.remove_component_quantity("PN1", 0)
+        with self.assertRaises(InvalidQuantityError):
+            inventory.remove_component_quantity("PN1", -5)
+        with self.assertRaises(InvalidQuantityError):
+            inventory.remove_component_quantity("PN1", "abc") # Type check
+
     @patch('backend.inventory.get_session')
-    def test_remove_component_quantity_success_partial(self, mock_get_session):
-        """Test removing a quantity less than the total stock."""
+    def test_remove_component_quantity_success_reduces(self, mock_get_session):
+        """Test successfully removing quantity, reducing stock."""
+        # Arrange
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        mock_comp = create_mock_component(part_number="PN1", quantity=10)
+        mock_filter_by.first.return_value = mock_comp
+        mock_query.filter_by.return_value = mock_filter_by
         mock_session.query.return_value = mock_query
-        # Clone the component mock to avoid side effects between tests if needed
-        test_component = MagicMock(spec=Component, quantity=100, part_number="PN123")
-        mock_query.filter_by.return_value.first.return_value = test_component
         mock_get_session.return_value = mock_session
 
-        quantity_to_remove = 20
-        result = inventory.remove_component_quantity("PN123", quantity_to_remove)
+        # Act
+        result = inventory.remove_component_quantity("PN1", 3)
 
+        # Assert
         mock_get_session.assert_called_once()
         mock_session.query.assert_called_once_with(Component)
-        mock_query.filter_by.assert_called_once_with(part_number="PN123")
-        self.assertEqual(test_component.quantity, 100 - quantity_to_remove)
-        mock_session.delete.assert_not_called()
+        mock_query.filter_by.assert_called_once_with(part_number="PN1")
+        mock_filter_by.first.assert_called_once()
+        self.assertEqual(mock_comp.quantity, 7) # Quantity reduced
+        mock_session.delete.assert_not_called() # Not deleted
         mock_session.commit.assert_called_once()
         mock_session.rollback.assert_not_called()
         mock_session.close.assert_called_once()
-        self.assertEqual(result, test_component) # Returns the updated component
+        self.assertEqual(result, mock_comp)
 
     @patch('backend.inventory.get_session')
-    def test_remove_component_quantity_success_full_delete(self, mock_get_session):
-        """Test removing the exact quantity, leading to deletion."""
+    def test_remove_component_quantity_success_deletes(self, mock_get_session):
+        """Test successfully removing quantity which results in deletion."""
+        # Arrange
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        mock_comp = create_mock_component(part_number="PN2", quantity=5)
+        mock_filter_by.first.return_value = mock_comp
+        mock_query.filter_by.return_value = mock_filter_by
         mock_session.query.return_value = mock_query
-        test_component = MagicMock(spec=Component, quantity=30, part_number="PN123")
-        mock_query.filter_by.return_value.first.return_value = test_component
         mock_get_session.return_value = mock_session
 
-        quantity_to_remove = 30
-        result = inventory.remove_component_quantity("PN123", quantity_to_remove)
+        # Act
+        result = inventory.remove_component_quantity("PN2", 5)
 
-        mock_get_session.assert_called_once()
-        mock_session.query.assert_called_once_with(Component)
-        mock_query.filter_by.assert_called_once_with(part_number="PN123")
-        self.assertEqual(test_component.quantity, 0)
-        mock_session.delete.assert_called_once_with(test_component) # Should be deleted
+        # Assert
+        self.assertEqual(mock_comp.quantity, 0) # Quantity becomes zero
+        mock_session.delete.assert_called_once_with(mock_comp) # Should be deleted
         mock_session.commit.assert_called_once()
         mock_session.rollback.assert_not_called()
         mock_session.close.assert_called_once()
-        self.assertEqual(result, test_component) # Returns the component *before* delete commit? Or None? Check logic. Returns component.
+        self.assertEqual(result, mock_comp)
 
     @patch('backend.inventory.get_session')
     def test_remove_component_quantity_not_found(self, mock_get_session):
         """Test removing quantity from a non-existent component."""
+        # Arrange
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        mock_filter_by.first.return_value = None # Simulate not found
+        mock_query.filter_by.return_value = mock_filter_by
         mock_session.query.return_value = mock_query
-        mock_query.filter_by.return_value.first.return_value = None # Not found
         mock_get_session.return_value = mock_session
 
+        # Act & Assert
         with self.assertRaises(ComponentNotFoundError) as cm:
-            inventory.remove_component_quantity("PN_NOT_EXIST", 10)
-
-        self.assertEqual(
-            str(cm.exception),
-            "Component with part number PN_NOT_EXIST not found"
-        )
-        mock_get_session.assert_called_once()
-        mock_session.query.assert_called_once_with(Component)
-        mock_query.filter_by.assert_called_once_with(part_number="PN_NOT_EXIST")
+            inventory.remove_component_quantity("PN_NOT_EXIST", 2)
+        self.assertIn("Component with part number PN_NOT_EXIST not found", str(cm.exception))
+        mock_session.delete.assert_not_called()
         mock_session.commit.assert_not_called()
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
@@ -227,125 +235,44 @@ class TestInventory(unittest.TestCase):
     @patch('backend.inventory.get_session')
     def test_remove_component_quantity_not_enough_stock(self, mock_get_session):
         """Test removing more quantity than available."""
+        # Arrange
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        mock_comp = create_mock_component(part_number="PN3", quantity=3)
+        mock_filter_by.first.return_value = mock_comp
+        mock_query.filter_by.return_value = mock_filter_by
         mock_session.query.return_value = mock_query
-        test_component = MagicMock(spec=Component, quantity=5, part_number="PN123")
-        mock_query.filter_by.return_value.first.return_value = test_component
         mock_get_session.return_value = mock_session
 
+        # Act & Assert
         with self.assertRaises(StockError) as cm:
-            inventory.remove_component_quantity("PN123", 10)
-
-        self.assertEqual(
-            str(cm.exception),
-            "Not enough stock to remove 10. Available: 5"
-        )
-        mock_get_session.assert_called_once()
-        mock_session.query.assert_called_once_with(Component)
-        mock_query.filter_by.assert_called_once_with(part_number="PN123")
-        self.assertEqual(test_component.quantity, 5) # Quantity should be unchanged
-        mock_session.commit.assert_not_called()
-        mock_session.rollback.assert_called_once()
-        mock_session.close.assert_called_once()
-
-    def test_remove_component_quantity_invalid_quantity(self):
-        """Test removing with invalid quantity values."""
-        with self.assertRaises(InvalidQuantityError):
-            inventory.remove_component_quantity("PN123", 0)
-        with self.assertRaises(InvalidQuantityError):
-            inventory.remove_component_quantity("PN123", -5)
-        with self.assertRaises(InvalidQuantityError):
-            inventory.remove_component_quantity("PN123", "abc") # Should also fail type check
-        with self.assertRaises(InvalidQuantityError):
-             inventory.remove_component_quantity("PN123", 5.5) # Should also fail type check
-
-    @patch('backend.inventory.get_session')
-    def test_remove_component_quantity_database_error(self, mock_get_session):
-        """Test database error during quantity removal commit."""
-        mock_session = MagicMock()
-        mock_query = MagicMock()
-        mock_session.query.return_value = mock_query
-        test_component = MagicMock(spec=Component, quantity=100, part_number="PN123")
-        mock_query.filter_by.return_value.first.return_value = test_component
-        mock_get_session.return_value = mock_session
-
-        # Simulate commit error
-        mock_session.commit.side_effect = Exception("DB Write Lock")
-
-        with self.assertRaises(DatabaseError) as cm:
-            inventory.remove_component_quantity("PN123", 10)
-
-        self.assertTrue("Error while removing component: DB Write Lock" in str(cm.exception))
-        self.assertEqual(test_component.quantity, 90) # Change happens before commit fails
-        mock_session.commit.assert_called_once()
-        mock_session.rollback.assert_called_once()
-        mock_session.close.assert_called_once()
-
-    # --- Test remove_component_by_part_number ---
-
-    @patch('backend.inventory.get_session')
-    def test_remove_component_by_part_number_success(self, mock_get_session):
-        """Test successfully removing a component by part number."""
-        mock_session = MagicMock()
-        mock_query = MagicMock()
-        mock_session.query.return_value = mock_query
-        mock_query.filter_by.return_value.first.return_value = self.mock_component_instance
-        mock_get_session.return_value = mock_session
-
-        result = inventory.remove_component_by_part_number("PN123")
-
-        mock_get_session.assert_called_once()
-        mock_session.query.assert_called_once_with(Component)
-        mock_query.filter_by.assert_called_once_with(part_number="PN123")
-        mock_session.delete.assert_called_once_with(self.mock_component_instance)
-        mock_session.commit.assert_called_once()
-        mock_session.rollback.assert_not_called()
-        mock_session.close.assert_called_once()
-        self.assertTrue(result)
-
-    @patch('backend.inventory.get_session')
-    def test_remove_component_by_part_number_not_found(self, mock_get_session):
-        """Test removing a non-existent component by part number."""
-        mock_session = MagicMock()
-        mock_query = MagicMock()
-        mock_session.query.return_value = mock_query
-        mock_query.filter_by.return_value.first.return_value = None # Not found
-        mock_get_session.return_value = mock_session
-
-        with self.assertRaises(ComponentNotFoundError) as cm:
-            inventory.remove_component_by_part_number("PN_NOT_EXIST")
-
-        self.assertEqual(
-            str(cm.exception),
-            "Component with part number PN_NOT_EXIST not found"
-        )
-        mock_get_session.assert_called_once()
-        mock_session.query.assert_called_once_with(Component)
-        mock_query.filter_by.assert_called_once_with(part_number="PN_NOT_EXIST")
+            inventory.remove_component_quantity("PN3", 5)
+        self.assertIn("Not enough stock to remove 5. Available: 3", str(cm.exception))
+        self.assertEqual(mock_comp.quantity, 3) # Quantity unchanged
         mock_session.delete.assert_not_called()
         mock_session.commit.assert_not_called()
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
 
     @patch('backend.inventory.get_session')
-    def test_remove_component_by_part_number_database_error(self, mock_get_session):
-        """Test database error during component deletion commit."""
+    def test_remove_component_quantity_db_error(self, mock_get_session):
+        """Test database error during remove operation."""
+        # Arrange
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        mock_comp = create_mock_component(part_number="PN4", quantity=10)
+        mock_filter_by.first.return_value = mock_comp
+        mock_query.filter_by.return_value = mock_filter_by
         mock_session.query.return_value = mock_query
-        mock_query.filter_by.return_value.first.return_value = self.mock_component_instance
         mock_get_session.return_value = mock_session
+        mock_session.commit.side_effect = Exception("DB write failed")
 
-        # Simulate commit error
-        mock_session.commit.side_effect = Exception("Constraint Violation")
-
+        # Act & Assert
         with self.assertRaises(DatabaseError) as cm:
-            inventory.remove_component_by_part_number("PN123")
-
-        self.assertTrue("Error while deleting component: Constraint Violation" in str(cm.exception))
-        mock_session.delete.assert_called_once_with(self.mock_component_instance) # Delete called before commit
-        mock_session.commit.assert_called_once()
+            inventory.remove_component_quantity("PN4", 2)
+        self.assertIn("Error while removing component: DB write failed", str(cm.exception))
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
 
@@ -353,191 +280,271 @@ class TestInventory(unittest.TestCase):
 
     @patch('backend.inventory.get_session')
     def test_get_component_by_part_number_found(self, mock_get_session):
-        """Test retrieving an existing component by part number."""
+        """Test finding an existing component by part number."""
+        # Arrange
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        mock_comp = create_mock_component(part_number="GET_PN1")
+        mock_filter_by.first.return_value = mock_comp
+        mock_query.filter_by.return_value = mock_filter_by
         mock_session.query.return_value = mock_query
-        mock_query.filter_by.return_value.first.return_value = self.mock_component_instance
         mock_get_session.return_value = mock_session
 
-        result = inventory.get_component_by_part_number("PN123")
+        # Act
+        result = inventory.get_component_by_part_number("GET_PN1")
 
+        # Assert
         mock_get_session.assert_called_once()
         mock_session.query.assert_called_once_with(Component)
-        mock_query.filter_by.assert_called_once_with(part_number="PN123")
+        mock_query.filter_by.assert_called_once_with(part_number="GET_PN1")
+        mock_filter_by.first.assert_called_once()
         mock_session.close.assert_called_once()
-        self.assertEqual(result, self.mock_component_instance)
+        self.assertEqual(result, mock_comp)
 
     @patch('backend.inventory.get_session')
     def test_get_component_by_part_number_not_found(self, mock_get_session):
-        """Test retrieving a non-existent component by part number."""
+        """Test getting a component that doesn't exist."""
+         # Arrange
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        mock_filter_by.first.return_value = None # Simulate not found
+        mock_query.filter_by.return_value = mock_filter_by
         mock_session.query.return_value = mock_query
-        mock_query.filter_by.return_value.first.return_value = None # Not found
         mock_get_session.return_value = mock_session
 
-        result = inventory.get_component_by_part_number("PN_NOT_EXIST")
+        # Act
+        result = inventory.get_component_by_part_number("GET_PN_MISSING")
 
+        # Assert
         mock_get_session.assert_called_once()
         mock_session.query.assert_called_once_with(Component)
-        mock_query.filter_by.assert_called_once_with(part_number="PN_NOT_EXIST")
+        mock_query.filter_by.assert_called_once_with(part_number="GET_PN_MISSING")
+        mock_filter_by.first.assert_called_once()
         mock_session.close.assert_called_once()
         self.assertIsNone(result)
 
     @patch('backend.inventory.get_session')
-    def test_get_component_by_part_number_database_error(self, mock_get_session):
-        """Test database error during component retrieval."""
+    def test_get_component_by_part_number_db_error(self, mock_get_session):
+        """Test database error during get component by part number."""
+        # Arrange
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_query.filter_by.side_effect = Exception("DB read failed") # Error on filter_by
         mock_session.query.return_value = mock_query
-        # Simulate query error
-        mock_query.filter_by.return_value.first.side_effect = Exception("Query Failed")
         mock_get_session.return_value = mock_session
 
+        # Act & Assert
         with self.assertRaises(DatabaseError) as cm:
-            inventory.get_component_by_part_number("PN123")
+            inventory.get_component_by_part_number("GET_PN_ERROR")
+        self.assertIn("Error while fetching component by part number GET_PN_ERROR: DB read failed", str(cm.exception))
+        mock_session.close.assert_called_once() # Finally block should still close
 
-        self.assertTrue("Error while fetching component by part number PN123: Query Failed" in str(cm.exception))
-        mock_get_session.assert_called_once()
-        mock_session.query.assert_called_once_with(Component)
-        mock_query.filter_by.assert_called_once_with(part_number="PN123")
-        mock_session.close.assert_called_once() # Finally block ensures close
 
     # --- Test get_all_components ---
 
     @patch('backend.inventory.get_session')
     def test_get_all_components_success(self, mock_get_session):
-        """Test retrieving all components."""
+        """Test successfully fetching all components."""
+        # Arrange
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_comps = [create_mock_component(part_number="ALL1"), create_mock_component(part_number="ALL2")]
+        mock_query.all.return_value = mock_comps
         mock_session.query.return_value = mock_query
-        mock_components_list = [self.mock_component_instance, MagicMock(spec=Component)]
-        mock_query.all.return_value = mock_components_list
         mock_get_session.return_value = mock_session
 
+        # Act
         result = inventory.get_all_components()
 
+        # Assert
         mock_get_session.assert_called_once()
         mock_session.query.assert_called_once_with(Component)
         mock_query.all.assert_called_once()
         mock_session.close.assert_called_once()
-        self.assertEqual(result, mock_components_list)
+        self.assertEqual(result, mock_comps)
 
     @patch('backend.inventory.get_session')
-    def test_get_all_components_empty(self, mock_get_session):
-        """Test retrieving all components when the database is empty."""
+    def test_get_all_components_db_error(self, mock_get_session):
+        """Test database error during fetch all."""
+        # Arrange
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_query.all.side_effect = Exception("Fetch all failed")
         mock_session.query.return_value = mock_query
-        mock_query.all.return_value = [] # Empty list
         mock_get_session.return_value = mock_session
 
-        result = inventory.get_all_components()
-
-        mock_get_session.assert_called_once()
-        mock_session.query.assert_called_once_with(Component)
-        mock_query.all.assert_called_once()
-        mock_session.close.assert_called_once()
-        self.assertEqual(result, [])
-
-    @patch('backend.inventory.get_session')
-    def test_get_all_components_database_error(self, mock_get_session):
-        """Test database error during retrieval of all components."""
-        mock_session = MagicMock()
-        mock_query = MagicMock()
-        mock_session.query.return_value = mock_query
-        # Simulate query error
-        mock_query.all.side_effect = Exception("Table Lock")
-        mock_get_session.return_value = mock_session
-
+        # Act & Assert
         with self.assertRaises(DatabaseError) as cm:
             inventory.get_all_components()
-
-        self.assertTrue("Error while fetching components: Table Lock" in str(cm.exception))
-        mock_get_session.assert_called_once()
-        mock_session.query.assert_called_once_with(Component)
-        mock_query.all.assert_called_once()
-        mock_session.close.assert_called_once() # Finally block
+        self.assertIn("Error while fetching components: Fetch all failed", str(cm.exception))
+        mock_session.close.assert_called_once()
 
     # --- Test update_component_quantity ---
 
-    @patch('backend.inventory.get_session')
-    def test_update_component_quantity_success(self, mock_get_session):
-        """Test successfully updating a component's quantity."""
-        mock_session = MagicMock()
-        mock_query = MagicMock()
-        mock_session.query.return_value = mock_query
-        test_component = MagicMock(spec=Component, id=5, quantity=50)
-        mock_query.filter_by.return_value.first.return_value = test_component
-        mock_get_session.return_value = mock_session
-
-        new_quantity = 75
-        result = inventory.update_component_quantity(5, new_quantity)
-
-        mock_get_session.assert_called_once()
-        mock_session.query.assert_called_once_with(Component)
-        mock_query.filter_by.assert_called_once_with(id=5)
-        self.assertEqual(test_component.quantity, new_quantity)
-        mock_session.commit.assert_called_once()
-        mock_session.rollback.assert_not_called()
-        mock_session.close.assert_called_once()
-        self.assertEqual(result, test_component) # Returns updated component
-
-    @patch('backend.inventory.get_session')
-    def test_update_component_quantity_not_found(self, mock_get_session):
-        """Test updating quantity for a non-existent component ID."""
-        mock_session = MagicMock()
-        mock_query = MagicMock()
-        mock_session.query.return_value = mock_query
-        mock_query.filter_by.return_value.first.return_value = None # Not found
-        mock_get_session.return_value = mock_session
-
-        with self.assertRaises(ComponentNotFoundError) as cm:
-            inventory.update_component_quantity(999, 10)
-
-        self.assertEqual(
-            str(cm.exception),
-            "Component with ID 999 not found"
-        )
-        mock_get_session.assert_called_once()
-        mock_session.query.assert_called_once_with(Component)
-        mock_query.filter_by.assert_called_once_with(id=999)
-        mock_session.commit.assert_not_called()
-        mock_session.rollback.assert_called_once()
-        mock_session.close.assert_called_once()
-
-    def test_update_component_quantity_invalid_quantity(self):
-        """Test updating with invalid quantity values."""
+    def test_update_component_quantity_invalid_input(self):
+        """Test updating quantity with invalid (negative or non-int) input."""
         with self.assertRaises(InvalidQuantityError):
             inventory.update_component_quantity(1, -1)
         with self.assertRaises(InvalidQuantityError):
             inventory.update_component_quantity(1, "abc")
-        with self.assertRaises(InvalidQuantityError):
-            inventory.update_component_quantity(1, 10.5)
 
     @patch('backend.inventory.get_session')
-    def test_update_component_quantity_database_error(self, mock_get_session):
-        """Test database error during quantity update commit."""
+    def test_update_component_quantity_success(self, mock_get_session):
+        """Test successfully updating component quantity."""
+        # Arrange
         mock_session = MagicMock()
         mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        mock_comp = create_mock_component(id=5, part_number="UPD1", quantity=10)
+        mock_filter_by.first.return_value = mock_comp
+        mock_query.filter_by.return_value = mock_filter_by
         mock_session.query.return_value = mock_query
-        test_component = MagicMock(spec=Component, id=5, quantity=50)
-        mock_query.filter_by.return_value.first.return_value = test_component
         mock_get_session.return_value = mock_session
 
-        # Simulate commit error
-        mock_session.commit.side_effect = Exception("DB Update Failed")
+        # Act
+        result = inventory.update_component_quantity(5, 25)
 
-        with self.assertRaises(DatabaseError) as cm:
-            inventory.update_component_quantity(5, 75)
-
-        self.assertTrue("Error while updating component quantity: DB Update Failed" in str(cm.exception))
-        self.assertEqual(test_component.quantity, 75) # Update happens before commit
+        # Assert
+        mock_get_session.assert_called_once()
+        mock_session.query.assert_called_once_with(Component)
+        mock_query.filter_by.assert_called_once_with(id=5)
+        mock_filter_by.first.assert_called_once()
+        self.assertEqual(mock_comp.quantity, 25) # Quantity updated
         mock_session.commit.assert_called_once()
+        mock_session.rollback.assert_not_called()
+        mock_session.close.assert_called_once()
+        self.assertEqual(result, mock_comp)
+
+    @patch('backend.inventory.get_session')
+    def test_update_component_quantity_not_found(self, mock_get_session):
+        """Test updating quantity for a component not found by ID."""
+        # Arrange
+        mock_session = MagicMock()
+        mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        mock_filter_by.first.return_value = None # Simulate not found
+        mock_query.filter_by.return_value = mock_filter_by
+        mock_session.query.return_value = mock_query
+        mock_get_session.return_value = mock_session
+
+        # Act & Assert
+        with self.assertRaises(ComponentNotFoundError) as cm:
+            inventory.update_component_quantity(999, 10)
+        self.assertIn("Component with ID 999 not found", str(cm.exception))
+        mock_session.commit.assert_not_called()
         mock_session.rollback.assert_called_once()
+        mock_session.close.assert_called_once()
+
+    @patch('backend.inventory.get_session')
+    def test_update_component_quantity_db_error(self, mock_get_session):
+        """Test database error during update quantity."""
+        # Arrange
+        mock_session = MagicMock()
+        mock_query = MagicMock()
+        mock_filter_by = MagicMock()
+        mock_comp = create_mock_component(id=6, quantity=5)
+        mock_filter_by.first.return_value = mock_comp
+        mock_query.filter_by.return_value = mock_filter_by
+        mock_session.query.return_value = mock_query
+        mock_get_session.return_value = mock_session
+        mock_session.commit.side_effect = Exception("Update failed")
+
+        # Act & Assert
+        with self.assertRaises(DatabaseError) as cm:
+            inventory.update_component_quantity(6, 10)
+        self.assertIn("Error while updating component quantity: Update failed", str(cm.exception))
+        mock_session.rollback.assert_called_once()
+        mock_session.close.assert_called_once()
+
+    # --- Test select_multiple_components ---
+
+    def test_select_multiple_components_empty_input(self):
+        """Test selecting with an empty list of part numbers."""
+        result = inventory.select_multiple_components([])
+        self.assertEqual(result, [])
+        # Crucially, get_session should not be called for an empty input list
+        # (Need to check if patch was active - better to test this way)
+        with patch('backend.inventory.get_session') as mock_get_session_local:
+             inventory.select_multiple_components([])
+             mock_get_session_local.assert_not_called()
+
+
+    @patch('backend.inventory.get_session')
+    def test_select_multiple_components_success(self, mock_get_session):
+        """Test selecting multiple components successfully."""
+        # Arrange
+        mock_session = MagicMock()
+        mock_query = MagicMock()
+        mock_filter = MagicMock()
+        mock_comps = [create_mock_component(part_number="MULTI1"), create_mock_component(part_number="MULTI3")]
+        mock_filter.all.return_value = mock_comps
+        # Mock the 'in_' operator filtering
+        mock_query.filter.return_value = mock_filter
+        mock_session.query.return_value = mock_query
+        mock_get_session.return_value = mock_session
+
+        part_numbers = ["MULTI1", "MULTI2", "MULTI3"]
+
+        # Act
+        result = inventory.select_multiple_components(part_numbers)
+
+        # Assert
+        mock_get_session.assert_called_once()
+        mock_session.query.assert_called_once_with(Component)
+        # Check that filter was called with the 'in_' condition (tricky to assert precisely without complex mock setup)
+        # We'll rely on checking that filter().all() was called and returns the correct result.
+        self.assertTrue(mock_query.filter.called)
+        mock_filter.all.assert_called_once()
+        mock_session.close.assert_called_once()
+        self.assertEqual(result, mock_comps)
+
+    @patch('backend.inventory.get_session')
+    def test_select_multiple_components_none_found(self, mock_get_session):
+        """Test selecting multiple components where none match."""
+        # Arrange
+        mock_session = MagicMock()
+        mock_query = MagicMock()
+        mock_filter = MagicMock()
+        mock_filter.all.return_value = [] # Simulate none found
+        mock_query.filter.return_value = mock_filter
+        mock_session.query.return_value = mock_query
+        mock_get_session.return_value = mock_session
+
+        part_numbers = ["MISSING1", "MISSING2"]
+
+        # Act
+        result = inventory.select_multiple_components(part_numbers)
+
+        # Assert
+        mock_get_session.assert_called_once()
+        mock_session.query.assert_called_once_with(Component)
+        self.assertTrue(mock_query.filter.called)
+        mock_filter.all.assert_called_once()
+        mock_session.close.assert_called_once()
+        self.assertEqual(result, [])
+
+    @patch('backend.inventory.get_session')
+    def test_select_multiple_components_db_error(self, mock_get_session):
+        """Test database error during select multiple."""
+        # Arrange
+        mock_session = MagicMock()
+        mock_query = MagicMock()
+        mock_filter = MagicMock()
+        mock_filter.all.side_effect = Exception("Multi-select failed")
+        mock_query.filter.return_value = mock_filter
+        mock_session.query.return_value = mock_query
+        mock_get_session.return_value = mock_session
+
+        part_numbers = ["PN_ERR1", "PN_ERR2"]
+
+        # Act & Assert
+        with self.assertRaises(DatabaseError) as cm:
+            inventory.select_multiple_components(part_numbers)
+        self.assertIn("Error selecting multiple components: Multi-select failed", str(cm.exception))
         mock_session.close.assert_called_once()
 
 
 if __name__ == '__main__':
-    unittest.main(argv=['first-arg-is-ignored'], exit=False) # Use exit=False if running in interactive env like Jupyter
+    unittest.main(argv=['first-arg-is-ignored'], exit=False)

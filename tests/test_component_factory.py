@@ -132,3 +132,6 @@ class TestComponentFactory(unittest.TestCase):
             "value": "42",
             "quantity": 5
         }
+
+if __name__ == '__main__':
+    unittest.main()

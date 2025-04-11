@@ -26,7 +26,6 @@ class ChatGPTWorker(QObject):
         else:
              self.finished.emit("Error: ChatGPT Service not available.")
 
-
 class GenerateIdeasController(QObject):
     def __init__(self, components, parent=None):
         super().__init__()

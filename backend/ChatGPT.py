@@ -28,7 +28,7 @@ class ChatGPTService:
         try:
             print(f"Sending prompt to ChatGPT:\n---\n{prompt}\n---")
             response = self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
