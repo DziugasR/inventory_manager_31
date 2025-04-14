@@ -10,4 +10,10 @@ faker==37.0.0
 
 openai==1.72.0
 
-dotenv
+dotenv~=0.9.9
+
+openpyxl == 3.1.5
+
+python-dotenv~=1.1.0
+
+pandas~=2.2.3

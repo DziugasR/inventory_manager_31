@@ -1,15 +1,16 @@
 import uuid
 
-from PyQt5.QtWidgets import QMessageBox, QInputDialog
+from PyQt5.QtWidgets import QMessageBox, QInputDialog, QFileDialog
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtCore import QObject, QUrl
 
 from frontend.ui.main_window import InventoryUI
 from frontend.ui.add_component_dialog import AddComponentDialog
 from frontend.controllers.generate_ideas_controller import GenerateIdeasController
+from frontend.controllers.import_export_controller import ImportExportController
 
 from backend.inventory import (
-    get_all_components, add_component, remove_component_quantity, get_component_by_id # Changed import
+    get_all_components, add_component, remove_component_quantity, get_component_by_id
 )
 from backend.exceptions import (
     InvalidQuantityError, ComponentNotFoundError, StockError, DatabaseError,
@@ -20,6 +21,7 @@ class MainController(QObject):
     def __init__(self, view: InventoryUI):
         super().__init__()
         self._view = view
+        self._import_export_controller = ImportExportController(self._view, self)
         self._connect_signals()
         self._load_initial_data()
 
@@ -28,6 +30,8 @@ class MainController(QObject):
         self._view.add_component_requested.connect(self.open_add_component_dialog)
         self._view.remove_components_requested.connect(self.handle_remove_components)
         self._view.generate_ideas_requested.connect(self.open_generate_ideas_dialog)
+        self._view.export_requested.connect(self._import_export_controller.handle_export_request)
+        self._view.import_requested.connect(self._import_export_controller.handle_import_request)
         self._view.link_clicked.connect(self.open_link_in_browser)
 
     def _load_initial_data(self):

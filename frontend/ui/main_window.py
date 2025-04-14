@@ -9,32 +9,16 @@ from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
 from frontend.ui.add_component_dialog import AddComponentDialog
 
-from frontend.ui.toolbar import setup_toolbar
-
 from pathlib import Path
 
 class InventoryUI(QMainWindow):
     add_component_requested = pyqtSignal()
     remove_components_requested = pyqtSignal(list)
     generate_ideas_requested = pyqtSignal(list)
-
     export_requested = pyqtSignal()
     import_requested = pyqtSignal()
     load_data_requested = pyqtSignal()
     link_clicked = pyqtSignal(QUrl)
-    new_inventory_triggered = pyqtSignal()
-    open_inventory_triggered = pyqtSignal()
-    save_inventory_triggered = pyqtSignal()
-    save_inventory_as_triggered = pyqtSignal()
-    exit_triggered = pyqtSignal()
-    copy_row_triggered = pyqtSignal()
-    paste_row_triggered = pyqtSignal()
-    find_triggered = pyqtSignal()
-    export_xls_triggered = pyqtSignal()
-    import_xls_triggered = pyqtSignal()
-    chatgpt_triggered = pyqtSignal()
-    table_size_triggered = pyqtSignal()
-    dark_mode_triggered = pyqtSignal()
 
     PART_NUMBER_COL = 0
     TYPE_COL = 1
@@ -52,7 +36,6 @@ class InventoryUI(QMainWindow):
         self._row_id_map = {}
         self._init_ui()
         self._connect_signals()
-        self._connect_toolbar_signals()
 
     def _load_stylesheet(self, filename="styles/button_styles.qss"):
         script_dir = Path(__file__).parent
@@ -71,8 +54,6 @@ class InventoryUI(QMainWindow):
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
 
-        #setup_toolbar(self)
-
         self.layout = QVBoxLayout(self.central_widget)
 
         button_stylesheet = self._load_stylesheet()
@@ -90,9 +71,17 @@ class InventoryUI(QMainWindow):
         self.generate_ideas_button.setObjectName("generateButton")
         self.generate_ideas_button.setEnabled(False)
 
+        self.export_button = QPushButton("Export to Excel")
+        self.export_button.setObjectName("exportButton")
+
+        self.import_button = QPushButton("Import from Excel")
+        self.import_button.setObjectName("importButton")
+
         button_layout.addWidget(self.add_button)
         button_layout.addWidget(self.remove_button)
         button_layout.addWidget(self.generate_ideas_button)
+        button_layout.addWidget(self.export_button)
+        button_layout.addWidget(self.import_button)
 
         self.layout.addLayout(button_layout)
 
@@ -124,27 +113,9 @@ class InventoryUI(QMainWindow):
         self.add_button.clicked.connect(self.add_component_requested)
         self.remove_button.clicked.connect(self._on_remove_clicked)
         self.generate_ideas_button.clicked.connect(self._on_generate_ideas_clicked)
+        self.export_button.clicked.connect(self._on_export_clicked)
+        self.import_button.clicked.connect(self._on_import_clicked)
         self.table.cellClicked.connect(self._handle_cell_click)
-
-    def _connect_toolbar_signals(self):
-        if hasattr(self, 'new_action'):
-            self.new_action.triggered.connect(self.new_inventory_triggered)
-        if hasattr(self, 'open_action'):
-            self.open_action.triggered.connect(self.open_inventory_triggered)
-        if hasattr(self, 'save_action'):
-            self.save_action.triggered.connect(self.save_inventory_triggered)
-        if hasattr(self, 'save_as_action'):
-            self.save_as_action.triggered.connect(self.save_inventory_as_triggered)
-        if hasattr(self, 'exit_action'):
-            self.exit_action.triggered.connect(self.exit_triggered)
-        if hasattr(self, 'copy_action'):
-            self.copy_action.triggered.connect(self.copy_row_triggered)
-        if hasattr(self, 'paste_action'):
-            self.paste_action.triggered.connect(self.paste_row_triggered)
-        if hasattr(self, 'find_action'):
-            self.find_action.triggered.connect(self.find_triggered)
-        if hasattr(self, 'help_action') and hasattr(self, 'help_triggered'):
-             self.help_action.triggered.connect(self.help_triggered)
 
     def _adjust_window_width(self):
         """Adjusts window width to fit table contents."""
@@ -172,6 +143,12 @@ class InventoryUI(QMainWindow):
         checked_ids = self.get_checked_ids()
         if checked_ids:
             self.generate_ideas_requested.emit(checked_ids)
+
+    def _on_export_clicked(self):
+        self.export_requested.emit()
+
+    def _on_import_clicked(self):
+        self.import_requested.emit()
 
     def _handle_cell_click(self, row, column):
         if column in [self.PURCHASE_LINK_COL, self.DATASHEET_COL]:

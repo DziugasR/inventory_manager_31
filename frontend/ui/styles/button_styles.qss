@@ -62,3 +62,46 @@ QPushButton#generateButton:pressed {
 QPushButton#generateButton:disabled {
     background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
 }
+
+QPushButton#exportButton {
+    font-size: 13px; font-weight: bold; color: white;
+    padding: 6px 10px;
+    min-height: 30px;
+    border-radius: 4px;
+    background-color: #b466c2; /* Solid Purple */
+    border: 1px solid #a155ae;
+    outline: none;
+}
+QPushButton#exportButton:hover {
+    background-color: #944fa3;
+    border-color: #803f8f;
+}
+QPushButton#exportButton:pressed {
+    background-color: #803f8f;
+    border-color: #6b3279;
+}
+QPushButton#exportButton:disabled {
+    background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
+}
+
+
+QPushButton#importButton {
+    font-size: 13px; font-weight: bold; color: white;
+    padding: 6px 10px;
+    min-height: 30px;
+    border-radius: 4px;
+    background-color: #f0ad4e; /* Solid Orange */
+    border: 1px solid #eea236;
+    outline: none;
+}
+QPushButton#importButton:hover {
+    background-color: #ec971f;
+    border-color: #d58512;
+}
+QPushButton#importButton:pressed {
+    background-color: #d58512;
+    border-color: #b06d0f;
+}
+QPushButton#importButton:disabled {
+    background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
+}
