@@ -63,7 +63,7 @@ QPushButton#generateButton:disabled {
     background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
 }
 
-QPushButton#exportButton {
+QPushButton#importButton {
     font-size: 13px; font-weight: bold; color: white;
     padding: 6px 10px;
     min-height: 30px;
@@ -72,20 +72,20 @@ QPushButton#exportButton {
     border: 1px solid #a155ae;
     outline: none;
 }
-QPushButton#exportButton:hover {
+QPushButton#importButton:hover {
     background-color: #944fa3;
     border-color: #803f8f;
 }
-QPushButton#exportButton:pressed {
+QPushButton#importButton:pressed {
     background-color: #803f8f;
     border-color: #6b3279;
 }
-QPushButton#exportButton:disabled {
+QPushButton#importButton:disabled {
     background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
 }
 
 
-QPushButton#importButton {
+QPushButton#exportButton {
     font-size: 13px; font-weight: bold; color: white;
     padding: 6px 10px;
     min-height: 30px;
@@ -94,14 +94,14 @@ QPushButton#importButton {
     border: 1px solid #eea236;
     outline: none;
 }
-QPushButton#importButton:hover {
+QPushButton#exportButton:hover {
     background-color: #ec971f;
     border-color: #d58512;
 }
-QPushButton#importButton:pressed {
+QPushButton#exportButton:pressed {
     background-color: #d58512;
     border-color: #b06d0f;
 }
-QPushButton#importButton:disabled {
+QPushButton#exportButton:disabled {
     background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
 }

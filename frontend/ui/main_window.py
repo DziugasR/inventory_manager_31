@@ -2,7 +2,7 @@ import uuid
 
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
-    QVBoxLayout, QWidget, QHBoxLayout, QCheckBox, QStyle, QAbstractItemView
+    QVBoxLayout, QWidget, QHBoxLayout, QCheckBox, QStyle, QAbstractItemView, QHeaderView
 )
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
@@ -31,7 +31,7 @@ class InventoryUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Electronics Inventory Manager")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 950, 500)
         self._checkboxes = []
         self._row_id_map = {}
         self._init_ui()
@@ -45,7 +45,7 @@ class InventoryUI(QMainWindow):
                 return f.read()
         except FileNotFoundError:
             print(f"Warning: Stylesheet not found at {style_path}")
-            return ""  # Return empty string if not found to avoid errors
+            return ""
         except Exception as e:
             print(f"Warning: Error reading stylesheet {style_path}: {e}")
             return ""
@@ -97,7 +97,7 @@ class InventoryUI(QMainWindow):
         ])
         self.table.setColumnWidth(self.PART_NUMBER_COL, 150)
         self.table.setColumnWidth(self.TYPE_COL, 100)
-        self.table.setColumnWidth(self.VALUE_COL, 250)
+        self.table.setColumnWidth(self.VALUE_COL, 300)
         self.table.setColumnWidth(self.QUANTITY_COL, 70)
         self.table.setColumnWidth(self.PURCHASE_LINK_COL, 90)
         self.table.setColumnWidth(self.DATASHEET_COL, 80)
@@ -133,6 +133,22 @@ class InventoryUI(QMainWindow):
 
         current_height = self.height()
         self.resize(int(target_width), current_height)
+
+    def _adjust_table_columns_for_resize(self):
+        if hasattr(self, 'table'):
+            header = self.table.horizontalHeader()
+            header.setSectionResizeMode(QHeaderView.Stretch)
+
+            header.setSectionResizeMode(self.PART_NUMBER_COL, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(self.TYPE_COL, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(self.QUANTITY_COL, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(self.CHECKBOX_COL, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(self.PURCHASE_LINK_COL, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(self.DATASHEET_COL, QHeaderView.ResizeToContents)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._adjust_table_columns_for_resize()
 
     def _on_remove_clicked(self):
         ids_to_remove = self.get_checked_ids()
