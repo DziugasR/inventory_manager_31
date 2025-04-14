@@ -98,14 +98,18 @@ class GenerateIdeasController(QObject):
             self.view.set_response_text("Please set a quantity greater than 0 for components you want to use.")
             return
 
-        prompt = "You are an experienced electronics engineer/lecturer. Generate specific and practical electronics project ideas utilizing *exactly* the following components and their specified quantities:\n\n"
+        prompt = "You are an electronics lecturer creating TWO extremely concise project idea using ONLY the components listed if needed you can add more components.\n\n"
+        prompt += "Generate TWO specific project using EXACTLY these components and quantities. Build ONLY with these parts.\n\n"
         prompt += "Available Components:\n"
         prompt += "\n".join(component_details)
-        prompt += "\n\nFor each project idea presented, provide the following:\n"
-        prompt += "1.  --Project Title:-- A concise name for the project.\n"
-        prompt += "2.  --Description:-- A brief explanation of the project's function and purpose.\n"
-        prompt += "3.  --Component Usage:-- Clearly explain the *specific role and logical function* of each listed component within that project's design. For example, specify if a resistor is used as a pull-up/pull-down, current-limiting, part of a voltage divider, etc., or how a microcontroller/sensor/transistor is employed.\n\n"
-        prompt += "Focus on realistic applications given the components. Ensure your response is technically sound, direct, and strictly avoids unnecessary rambling or excessive adjectives. Present a few distinct ideas."
+        prompt += "\n\nUse this strict format (plain text, no markdown headers):\n\n"
+        prompt += "--Project Title:--\n"
+        prompt += "[Concise Project Name Here]\n\n"
+        prompt += "--Description:--\n"
+        prompt += "[Couple, concise sentence explaining the project's function.]\n\n"
+        prompt += "--Component Usage:--\n"
+        prompt += "[List *each* component below, followed by ' - ' and its *brief* role in couple sentences.]\n"
+        prompt += "\nFocus on a logical use of the exact parts. Be extremely direct and brief."
 
         print(f"Controller: Sending prompt:\n{prompt}")
 

@@ -1,3 +1,5 @@
+import uuid
+
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
     QVBoxLayout, QWidget, QHBoxLayout, QCheckBox, QStyle, QAbstractItemView
@@ -6,6 +8,7 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
 from frontend.ui.add_component_dialog import AddComponentDialog
+
 from frontend.ui.toolbar import setup_toolbar
 
 from pathlib import Path
@@ -34,19 +37,19 @@ class InventoryUI(QMainWindow):
     dark_mode_triggered = pyqtSignal()
 
     PART_NUMBER_COL = 0
-    NAME_COL = 1
-    TYPE_COL = 2
-    VALUE_COL = 3
-    QUANTITY_COL = 4
-    PURCHASE_LINK_COL = 5
-    DATASHEET_COL = 6
-    CHECKBOX_COL = 7
+    TYPE_COL = 1
+    VALUE_COL = 2
+    QUANTITY_COL = 3
+    PURCHASE_LINK_COL = 4
+    DATASHEET_COL = 5
+    CHECKBOX_COL = 6
 
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Electronics Inventory Manager")
         self.setGeometry(100, 100, 800, 600)
         self._checkboxes = []
+        self._row_id_map = {}
         self._init_ui()
         self._connect_signals()
         self._connect_toolbar_signals()
@@ -68,7 +71,7 @@ class InventoryUI(QMainWindow):
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
 
-        setup_toolbar(self)
+        #setup_toolbar(self)
 
         self.layout = QVBoxLayout(self.central_widget)
 
@@ -99,18 +102,17 @@ class InventoryUI(QMainWindow):
 
         self.table.setSortingEnabled(True)
 
-        self.table.setColumnCount(8)
+        self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
-            "Part Number", "Name", "Type", "Value", "Quantity", "Purchase Link", "Datasheet", "Select"
+            "Part Number", "Type", "Value", "Quantity", "Purchase Link", "Datasheet", "Select"
         ])
-        self.table.setColumnWidth(self.PART_NUMBER_COL, 120)
-        self.table.setColumnWidth(self.NAME_COL, 150)
+        self.table.setColumnWidth(self.PART_NUMBER_COL, 150)
         self.table.setColumnWidth(self.TYPE_COL, 100)
-        self.table.setColumnWidth(self.VALUE_COL, 300)
+        self.table.setColumnWidth(self.VALUE_COL, 250)
         self.table.setColumnWidth(self.QUANTITY_COL, 70)
         self.table.setColumnWidth(self.PURCHASE_LINK_COL, 90)
         self.table.setColumnWidth(self.DATASHEET_COL, 80)
-        self.table.setColumnWidth(self.CHECKBOX_COL, 50)
+        self.table.setColumnWidth(self.CHECKBOX_COL, 60)
         self.layout.addWidget(self.table)
 
         if button_stylesheet:
@@ -162,14 +164,14 @@ class InventoryUI(QMainWindow):
         self.resize(int(target_width), current_height)
 
     def _on_remove_clicked(self):
-        part_numbers_to_remove = self.get_checked_part_numbers()
-        if part_numbers_to_remove:
-            self.remove_components_requested.emit(part_numbers_to_remove)
+        ids_to_remove = self.get_checked_ids()
+        if ids_to_remove:
+            self.remove_components_requested.emit(ids_to_remove)
 
     def _on_generate_ideas_clicked(self):
-        checked_part_numbers = self.get_checked_part_numbers()
-        if checked_part_numbers:
-            self.generate_ideas_requested.emit(checked_part_numbers)
+        checked_ids = self.get_checked_ids()
+        if checked_ids:
+            self.generate_ideas_requested.emit(checked_ids)
 
     def _handle_cell_click(self, row, column):
         if column in [self.PURCHASE_LINK_COL, self.DATASHEET_COL]:
@@ -179,40 +181,43 @@ class InventoryUI(QMainWindow):
                 if isinstance(link_data, QUrl) and link_data.isValid():
                     self.link_clicked.emit(link_data)
 
-    def get_checked_part_numbers(self):
-        checked_part_numbers = []
+    def get_checked_ids(self) -> list[uuid.UUID]:
+        checked_ids = []
         for row in range(self.table.rowCount()):
-            container_widget = self.table.cellWidget(row, self.CHECKBOX_COL)
-            if container_widget:
-                checkbox = container_widget.findChild(QCheckBox)
+            widget = self.table.cellWidget(row, self.CHECKBOX_COL)
+            if isinstance(widget, QWidget):
+                checkbox = widget.findChild(QCheckBox)
                 if checkbox and checkbox.isChecked():
-                    part_number_item = self.table.item(row, self.PART_NUMBER_COL)
-                    if part_number_item and part_number_item.text():
-                        checked_part_numbers.append(part_number_item.text())
-        return checked_part_numbers
+                    component_id = self._row_id_map.get(row)
+                    if component_id:
+                        checked_ids.append(component_id)
+                    else:
+                        print(f"Warning: No ID found in map for checked row {row}")
+        return checked_ids
 
     def _update_buttons_state_on_checkbox(self):
-        checked_items = self.get_checked_part_numbers()
+        checked_items = self.get_checked_ids()
         enable = len(checked_items) > 0
         self.remove_button.setEnabled(enable)
         self.generate_ideas_button.setEnabled(enable)
 
-    def get_selected_part_number(self):
-        selected_items = self.table.selectedItems()
-        if not selected_items:
-            return None
+    def get_selected_id(self) -> uuid.UUID | None:
         selected_row = self.table.currentRow()
-        if selected_row < 0:
-             return None
-        part_number_item = self.table.item(selected_row, self.PART_NUMBER_COL)
-        return part_number_item.text() if part_number_item else None
+        if selected_row >= 0:
+            return self._row_id_map.get(selected_row)
+        return None
 
-    def get_selected_row_data(self):
+    def get_selected_row_data(self) -> dict | None:
         selected_row = self.table.currentRow()
         if selected_row < 0:
             return None
-        headers = [self.table.horizontalHeaderItem(i).text() for i in range(self.table.columnCount() -1 )]
+
+        headers = [self.table.horizontalHeaderItem(i).text() for i in range(self.table.columnCount() - 1)] # Exclude checkbox col header
         data = {}
+        component_id = self._row_id_map.get(selected_row)
+        if component_id:
+            data['id'] = str(component_id)
+
         for col, header in enumerate(headers):
             item = self.table.item(selected_row, col)
             data[header] = item.text() if item else ""
@@ -222,14 +227,17 @@ class InventoryUI(QMainWindow):
                      data[header + "_url"] = link_data.toString()
         return data
 
-    def display_data(self, components):
+    def display_data(self, components: list):
         self.table.setSortingEnabled(False)
+
+        current_selection_id = self.get_selected_id()
 
         self.table.setRowCount(0)
         self._checkboxes.clear()
+        self._row_id_map.clear()
 
         if not components:
-            self.table.setRowCount(0)
+
             self._update_buttons_state_on_checkbox()
             self.table.setSortingEnabled(True)
             return
@@ -238,23 +246,40 @@ class InventoryUI(QMainWindow):
 
         try:
             if not hasattr(self, '_backend_to_ui_map_cache'):
+
+                from frontend.ui.add_component_dialog import AddComponentDialog
                 temp_dialog = AddComponentDialog()
                 self._backend_to_ui_map_cache = {v: k for k, v in temp_dialog.ui_to_backend_name_mapping.items()}
                 del temp_dialog
             backend_to_ui_name_mapping = self._backend_to_ui_map_cache
-        except NameError:
+        except (NameError, ImportError):
             backend_to_ui_name_mapping = {}
-            print("Warning: AddComponentDialog not found, using raw backend names.")
+            print("Warning: AddComponentDialog not found or failed to import. Using raw backend names for types.")
         except Exception as e:
             backend_to_ui_name_mapping = {}
-            print(f"Warning: Error getting name mapping: {e}")
+            print(f"Warning: Error getting type name mapping: {e}")
 
+        new_selection_row = -1
         for row, component in enumerate(components):
+            component_id = component.id
+            if not isinstance(component_id, uuid.UUID):
+                print(f"Warning: Invalid or missing ID for component {component.part_number} at row {row}. Skipping row.")
+                self.table.setRowHidden(row, True)
+                continue
+
+            self._row_id_map[row] = component_id
+
+            if component_id == current_selection_id:
+                new_selection_row = row
+
             ui_component_type = backend_to_ui_name_mapping.get(component.component_type, component.component_type)
 
-            self.table.setItem(row, self.PART_NUMBER_COL, QTableWidgetItem(component.part_number or ""))
-            self.table.setItem(row, self.NAME_COL, QTableWidgetItem(component.name or ""))
+            pn_item = QTableWidgetItem(component.part_number or "")
+            pn_item.setData(Qt.UserRole, component_id)
+            self.table.setItem(row, self.PART_NUMBER_COL, pn_item)
+
             self.table.setItem(row, self.TYPE_COL, QTableWidgetItem(ui_component_type))
+
             self.table.setItem(row, self.VALUE_COL, QTableWidgetItem(component.value or ""))
 
             qty_item = QTableWidgetItem()
@@ -262,24 +287,26 @@ class InventoryUI(QMainWindow):
                 numeric_quantity = int(component.quantity)
                 qty_item.setData(Qt.EditRole, numeric_quantity)
             except (ValueError, TypeError):
-                qty_item.setData(Qt.EditRole, str(component.quantity or '0'))
+                qty_item.setData(Qt.EditRole, 0)
+
             qty_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.table.setItem(row, self.QUANTITY_COL, qty_item)
 
-            def set_link_item(row, col, link):
-                if link:
-                    item = QTableWidgetItem("Link")
+            def set_link_item(row_idx, col_idx, link_url):
+                item = QTableWidgetItem()
+                item.setTextAlignment(Qt.AlignCenter)
+                if link_url:
+                    item.setText("Link")
                     item.setForeground(QColor("blue"))
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable | Qt.ItemIsSelectable)
-                    item.setTextAlignment(Qt.AlignCenter)
-                    url = QUrl(link)
+                    item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+                    url = QUrl(link_url)
                     if not url.scheme():
                         url.setScheme("http")
                     item.setData(Qt.UserRole, url)
                 else:
-                    item = QTableWidgetItem("")
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable & ~Qt.ItemIsSelectable)
-                self.table.setItem(row, col, item)
+                    item.setText("")
+                    item.setFlags(Qt.ItemIsEnabled)
+                self.table.setItem(row_idx, col_idx, item)
 
             set_link_item(row, self.PURCHASE_LINK_COL, component.purchase_link)
             set_link_item(row, self.DATASHEET_COL, component.datasheet_link)
@@ -296,13 +323,17 @@ class InventoryUI(QMainWindow):
             self._checkboxes.append(checkbox)
 
             self.table.setCellWidget(row, self.CHECKBOX_COL, cell_widget)
+
             item_for_checkbox_cell = QTableWidgetItem()
             item_for_checkbox_cell.setFlags(Qt.ItemIsEnabled)
             self.table.setItem(row, self.CHECKBOX_COL, item_for_checkbox_cell)
 
         self.table.setSortingEnabled(True)
-        self.table.sortByColumn(self.PART_NUMBER_COL, Qt.AscendingOrder)
 
-        self.table.clearSelection()
+        if new_selection_row != -1:
+            self.table.selectRow(new_selection_row)
+        else:
+            self.table.clearSelection()
+
         self._update_buttons_state_on_checkbox()
         self._adjust_window_width()

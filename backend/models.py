@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String
+import uuid
+
+from sqlalchemy import Column, Integer, String, UUID
 from sqlalchemy.ext.declarative import declarative_base
 from abc import abstractmethod
 
@@ -7,8 +9,8 @@ Base = declarative_base()
 class Component(Base):
     __tablename__ = "components"
 
-    part_number = Column(String, primary_key=True)
-    name = Column(String, nullable=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    part_number = Column(String, nullable=False)
     component_type = Column(String, nullable=False)
     value = Column(String, nullable=False)
     quantity = Column(Integer, nullable=False)
