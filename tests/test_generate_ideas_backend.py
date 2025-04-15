@@ -2,7 +2,6 @@ import unittest
 import io
 import contextlib
 
-# Assuming generate_ideas_backend.py is in the same directory or accessible via PYTHONPATH
 from backend.generate_ideas_backend import GenerateIdeasBackend
 
 class TestGenerateIdeasBackend(unittest.TestCase):

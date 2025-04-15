@@ -47,7 +47,7 @@ def create_component_class(class_name, polymorphic_id, spec_format_string):
     new_class = type(class_name, (Component,), class_attributes)
     return new_class
 
-
+# TODO gal šituos dinamyc valuesus perkelt į kitą failą?
 Resistor = create_component_class(
     class_name="Resistor",
     polymorphic_id="resistor",

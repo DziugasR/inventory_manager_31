@@ -40,7 +40,6 @@ class TestComponentFactory(unittest.TestCase):
         # Standard test data for all components
         default_data = {
             "part_number": "TEST-",
-            "name": "Test Component",
             "value": "1",
             "quantity": 10,
             "purchase_link": "https://example.com",
@@ -74,7 +73,6 @@ class TestComponentFactory(unittest.TestCase):
                 # Assertions
                 self.assertIsNotNone(retrieved, f"{component_type} not found in database")
                 self.assertEqual(retrieved.component_type, component_type)
-                self.assertEqual(retrieved.name, test_data["name"])
                 self.assertEqual(retrieved.value, test_data["value"])
                 self.assertEqual(retrieved.quantity, test_data["quantity"])
 
@@ -108,7 +106,7 @@ class TestComponentFactory(unittest.TestCase):
     def test_error_on_unknown_component_type(self):
         """Test that factory raises ValueError for unknown component types."""
         with self.assertRaises(ValueError):
-            ComponentFactory.create_component("nonexistent_type", part_number="TEST-X", name="Error Test", value="1",
+            ComponentFactory.create_component("nonexistent_type", part_number="TEST-X", value="1",
                                               quantity=1)
 
     def test_register_new_component_type(self):
@@ -128,7 +126,6 @@ class TestComponentFactory(unittest.TestCase):
         # Test creating an instance
         test_data = {
             "part_number": "TEST-CUSTOM",
-            "name": "Custom Test Component",
             "value": "42",
             "quantity": 5
         }

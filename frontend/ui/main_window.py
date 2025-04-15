@@ -37,19 +37,6 @@ class InventoryUI(QMainWindow):
         self._init_ui()
         self._connect_signals()
 
-    def _load_stylesheet(self, filename="styles/button_styles.qss"):
-        script_dir = Path(__file__).parent
-        style_path = script_dir / filename
-        try:
-            with open(style_path, "r", encoding="utf-8") as f:
-                return f.read()
-        except FileNotFoundError:
-            print(f"Warning: Stylesheet not found at {style_path}")
-            return ""
-        except Exception as e:
-            print(f"Warning: Error reading stylesheet {style_path}: {e}")
-            return ""
-
     def _init_ui(self):
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
@@ -149,6 +136,19 @@ class InventoryUI(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._adjust_table_columns_for_resize()
+
+    def _load_stylesheet(self, filename="styles/button_styles.qss"):
+        script_dir = Path(__file__).parent
+        style_path = script_dir / filename
+        try:
+            with open(style_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            print(f"Warning: Stylesheet not found at {style_path}")
+            return ""
+        except Exception as e:
+            print(f"Warning: Error reading stylesheet {style_path}: {e}")
+            return ""
 
     def _on_remove_clicked(self):
         ids_to_remove = self.get_checked_ids()

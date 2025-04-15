@@ -36,7 +36,6 @@ def export_to_excel(filename: str) -> bool:
 
     try:
         with ExcelWriter(filename, engine='openpyxl') as writer:
-            # Ensure header=True (default), index=False
             df.to_excel(writer, sheet_name='Inventory', index=False, header=True)
 
             workbook = writer.book

@@ -50,5 +50,4 @@ class ComponentFactory:
 
     @staticmethod
     def register_component(name, cls):
-        """Dynamically add new components"""
         ComponentFactory._component_types[name] = cls

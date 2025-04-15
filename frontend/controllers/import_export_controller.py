@@ -2,22 +2,17 @@ import uuid
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from PyQt5.QtCore import QObject
 
-
 from frontend.ui.main_window import InventoryUI
 from backend.import_export_logic import export_to_excel, import_from_excel
 from backend.exceptions import DatabaseError, InvalidInputError, ComponentError
 
 class ImportExportController(QObject):
-    """
-    Handles the logic for importing and exporting inventory data.
-    """
     def __init__(self, view: InventoryUI, main_controller):
         super().__init__()
         self._view = view
         self._main_controller = main_controller
 
     def handle_export_request(self):
-        """Handles the request to export inventory data to an Excel file."""
         default_filename = "inventory_export.xlsx"
         excel_filter = "Excel Files (*.xlsx)"
 

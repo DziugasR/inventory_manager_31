@@ -9,5 +9,4 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
 def get_session():
-    """ Returns a new database session. """
     return Session()

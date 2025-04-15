@@ -8,12 +8,10 @@ class ChatGPTService:
         self.api_key = os.getenv("OPENAI_API_KEY")
 
         if not self.api_key:
-            print("Warning: OPENAI_API_KEY environment variable not set.")
             self.client = None
         else:
             try:
                 self.client = openai.OpenAI(api_key=self.api_key)
-                print("ChatGPT Service Initialized.")
             except Exception as e:
                 print(f"Error initializing OpenAI client: {e}")
                 self.client = None
@@ -21,13 +19,20 @@ class ChatGPTService:
     def is_ready(self):
         return self.client is not None
 
+    def __execute_chat_completion(self, model, messages, temperature, max_tokens):
+        return self.client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+
     def get_project_ideas(self, prompt):
         if not self.is_ready():
             return "Error: ChatGPT service is not configured (API key missing or invalid)."
 
         try:
-            print(f"Sending prompt to ChatGPT:\n---\n{prompt}\n---")
-            response = self.client.chat.completions.create(
+            response = self.__execute_chat_completion(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "user", "content": prompt}
@@ -37,7 +42,6 @@ class ChatGPTService:
             )
             if response.choices:
                 generated_text = response.choices[0].message.content.strip()
-                print("ChatGPT Response Received.")
                 return generated_text
             else:
                 return "Error: No response choices received from ChatGPT."

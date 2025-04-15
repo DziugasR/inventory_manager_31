@@ -1,5 +1,7 @@
 QPushButton#addButton {
-    font-size: 13px; font-weight: bold; color: white;
+    font-size: 13px;
+    font-weight: bold;
+    color: white;
     padding: 6px 10px;
     min-height: 30px;
     border-radius: 4px;
@@ -16,7 +18,9 @@ QPushButton#addButton:pressed {
     border-color: #398439;
 }
 QPushButton#addButton:disabled {
-    background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
+    background-color: #B0B0B0;
+    border: 1px solid #999999;
+    color: #707070;
 }
 
 
@@ -38,7 +42,9 @@ QPushButton#removeButton:pressed {
     border-color: #8b221f;
 }
 QPushButton#removeButton:disabled {
-    background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
+    background-color: #B0B0B0;
+    border: 1px solid #999999;
+    color: #707070;
 }
 
 
@@ -60,8 +66,11 @@ QPushButton#generateButton:pressed {
     border-color: #1a4161;
 }
 QPushButton#generateButton:disabled {
-    background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
+    background-color: #B0B0B0;
+    border: 1px solid #999999;
+    color: #707070;
 }
+
 
 QPushButton#importButton {
     font-size: 13px; font-weight: bold; color: white;
@@ -81,7 +90,9 @@ QPushButton#importButton:pressed {
     border-color: #6b3279;
 }
 QPushButton#importButton:disabled {
-    background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
+    background-color: #B0B0B0;
+    border: 1px solid #999999;
+    color: #707070;
 }
 
 
@@ -103,5 +114,26 @@ QPushButton#exportButton:pressed {
     border-color: #b06d0f;
 }
 QPushButton#exportButton:disabled {
-    background-color: #B0B0B0; border: 1px solid #999999; color: #707070;
+    background-color: #B0B0B0;
+    border: 1px solid #999999;
+    color: #707070;
+}
+
+
+QPushButton#generateIdeasButton {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    background-color: #5cb85c;
+    border: 1px solid #4cae4c; border-radius: 5px; padding: 10px;
+}
+
+QPushButton#generateIdeasButton:hover {
+    background-color: #4cae4c;
+    border-color: #398439;
+}
+
+QPushButton#generateIdeasButton:pressed {
+    background-color: #449d44;
+    border: 1px solid #398439;
 }

@@ -1,6 +1,6 @@
 import uuid
 
-from PyQt5.QtWidgets import QMessageBox, QInputDialog, QFileDialog
+from PyQt5.QtWidgets import QMessageBox, QInputDialog
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtCore import QObject, QUrl
 
@@ -168,7 +168,6 @@ class MainController(QObject):
 
         if success_count > 0:
             self.load_inventory_data()
-
 
     def open_generate_ideas_dialog(self, checked_ids: list[uuid.UUID]):
         if not checked_ids:

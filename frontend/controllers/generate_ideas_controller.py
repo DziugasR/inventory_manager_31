@@ -1,9 +1,9 @@
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
-
 from functools import partial
 
 from frontend.ui.generate_ideas_dialog import GenerateIdeasDialog
 from backend.ChatGPT import ChatGPTService
+from backend.generate_ideas_backend import construct_generation_prompt
 
 try:
     from frontend.ui.add_component_dialog import AddComponentDialog
@@ -25,6 +25,7 @@ class ChatGPTWorker(QObject):
              self.finished.emit(result)
         else:
              self.finished.emit("Error: ChatGPT Service not available.")
+
 
 class GenerateIdeasController(QObject):
     def __init__(self, components, parent=None):
@@ -75,55 +76,40 @@ class GenerateIdeasController(QObject):
         if not self.chatgpt_service.is_ready():
              self.view.set_response_text("ChatGPT is not configured. Check API key.")
              return
+
         if self._worker_thread and self._worker_thread.isRunning():
              print("Controller: Generation already in progress.")
              return
 
-        component_details = []
         current_spinbox_values = self.view.get_spinbox_values()
-
         print(f"Controller: Current spinbox values from view: {current_spinbox_values}")
 
-        for component in self.components:
-             part_number = component.part_number
-             project_qty = current_spinbox_values.get(part_number, 0)
+        prompt = construct_generation_prompt(
+            self.components,
+            current_spinbox_values,
+            self._type_mapping
+        )
 
-             if project_qty > 0:
-                 ui_type = self._type_mapping.get(component.component_type, component.component_type)
-                 value = component.value or "N/A"
-                 component_details.append(f"  - {part_number} (Type: {ui_type}, Value: {value}): Quantity {project_qty}")
-
-        if not component_details:
+        if prompt is None:
             print("Controller: No components selected (all quantities are 0).")
             self.view.set_response_text("Please set a quantity greater than 0 for components you want to use.")
             return
 
-        prompt = "You are an electronics lecturer creating TWO extremely concise project idea using ONLY the components listed if needed you can add more components.\n\n"
-        prompt += "Generate TWO specific project using EXACTLY these components and quantities. Build ONLY with these parts.\n\n"
-        prompt += "Available Components:\n"
-        prompt += "\n".join(component_details)
-        prompt += "\n\nUse this strict format (plain text, no markdown headers):\n\n"
-        prompt += "--Project Title:--\n"
-        prompt += "[Concise Project Name Here]\n\n"
-        prompt += "--Description:--\n"
-        prompt += "[Couple, concise sentence explaining the project's function.]\n\n"
-        prompt += "--Component Usage:--\n"
-        prompt += "[List *each* component below, followed by ' - ' and its *brief* role in couple sentences.]\n"
-        prompt += "\nFocus on a logical use of the exact parts. Be extremely direct and brief."
-
-        print(f"Controller: Sending prompt:\n{prompt}")
+        print(f"Controller: Sending prompt (constructed by backend):\n{prompt}")
 
         self.view.show_processing(True)
 
         self._worker_thread = QThread()
         self._worker = ChatGPTWorker(self.chatgpt_service, prompt)
         self._worker.moveToThread(self._worker_thread)
+
         self._worker_thread.started.connect(self._worker.run)
         self._worker.finished.connect(self._handle_chatgpt_result)
         self._worker.finished.connect(self._worker_thread.quit)
         self._worker_thread.finished.connect(self._worker.deleteLater)
         self._worker_thread.finished.connect(self._worker_thread.deleteLater)
         self._worker_thread.finished.connect(self._on_thread_finished)
+
         self._worker_thread.start()
 
     def _handle_chatgpt_result(self, result):

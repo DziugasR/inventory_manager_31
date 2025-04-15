@@ -116,7 +116,6 @@ class AddComponentDialog(QDialog):
             self.dynamic_fields[field_name] = (label, input_field)
             quantity_row_index += 1
 
-
     def validate_inputs(self):
         part_number = self.part_number_input.text().strip()
 

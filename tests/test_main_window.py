@@ -13,10 +13,9 @@ from pathlib import Path
 
 
 class MockComponent(QObject):
-    def __init__(self, part_number="PN", name="Name", component_type="RES", value="1k", quantity=10, purchase_link=None, datasheet_link=None):
+    def __init__(self, part_number="PN", component_type="RES", value="1k", quantity=10, purchase_link=None, datasheet_link=None):
         super().__init__()
         self.part_number = part_number
-        self.name = name
         self.component_type = component_type
         self.value = value
         self.quantity = quantity
@@ -94,9 +93,9 @@ class TestInventoryUI(unittest.TestCase):
     def test_display_data_with_items(self):
         self.mock_adjust_width.reset_mock()
         components = [
-            MockComponent(part_number="R101", name="R 1k", component_type="RES", value="1k", quantity=5, purchase_link="http://example.com/r1"),
-            MockComponent(part_number="C202", name="C 100n", component_type="CAP", value="100nF", quantity=0, datasheet_link="example.com/c2"),
-            MockComponent(part_number="U303", name="IC", component_type="IC", value=None, quantity="Many", purchase_link=None),
+            MockComponent(part_number="R101", component_type="RES", value="1k", quantity=5, purchase_link="http://example.com/r1"),
+            MockComponent(part_number="C202", component_type="CAP", value="100nF", quantity=0, datasheet_link="example.com/c2"),
+            MockComponent(part_number="U303", component_type="IC", value=None, quantity="Many", purchase_link=None),
         ]
         self.window.display_data(components)
         self.assertEqual(self.window.table.rowCount(), 3)
@@ -234,7 +233,7 @@ class TestInventoryUI(unittest.TestCase):
         self.mock_adjust_width.reset_mock()
         link_p = "http://pur.chase/p1"
         link_d = "http://data.sheet/d1"
-        components = [MockComponent(part_number="ROW1", name="Comp A", component_type="TYPEA", value="ValA", quantity=1, purchase_link=link_p, datasheet_link=link_d)]
+        components = [MockComponent(part_number="ROW1", component_type="TYPEA", value="ValA", quantity=1, purchase_link=link_p, datasheet_link=link_d)]
         self.window.display_data(components)
         self.assertIsNone(self.window.get_selected_row_data())
         self.window.table.setCurrentCell(0, 0)
