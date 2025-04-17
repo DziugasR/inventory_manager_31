@@ -1,11 +1,29 @@
 import os
 import openai
 from dotenv import load_dotenv
+import configparser
 
 class ChatGPTService:
     def __init__(self):
         load_dotenv()
         self.api_key = os.getenv("OPENAI_API_KEY")
+
+        config = configparser.ConfigParser()
+        config_path = 'config.ini'
+        default_model = 'gpt-4o-mini'
+        self.model_name = default_model
+
+        try:
+            if config.read(config_path):
+                self.model_name = config.get('OpenAI', 'model', fallback=default_model)
+            else:
+                print(f"Warning: Configuration file '{config_path}' not found or empty. Using default OpenAI model: {self.model_name}")
+        except configparser.Error as e:
+            print(f"Error reading configuration file '{config_path}': {e}. Using default OpenAI model: {self.model_name}")
+        except Exception as e:
+             print(f"Unexpected error reading config file '{config_path}': {e}. Using default OpenAI model: {self.model_name}")
+
+        print(f"INFO: Using OpenAI model: {self.model_name}")
 
         if not self.api_key:
             self.client = None
@@ -17,7 +35,13 @@ class ChatGPTService:
                 self.client = None
 
     def is_ready(self):
-        return self.client is not None
+        if self.client is None:
+             if not self.api_key:
+                 print("Warning: OpenAI API key not found. ChatGPT service disabled.")
+             else:
+                 print("Warning: OpenAI client failed to initialize. ChatGPT service likely disabled.")
+             return False
+        return True
 
     def __execute_chat_completion(self, model, messages, temperature, max_tokens):
         return self.client.chat.completions.create(
@@ -29,11 +53,11 @@ class ChatGPTService:
 
     def get_project_ideas(self, prompt):
         if not self.is_ready():
-            return "Error: ChatGPT service is not configured (API key missing or invalid)."
+            return "Error: ChatGPT service is not configured or failed to initialize."
 
         try:
             response = self.__execute_chat_completion(
-                model="gpt-4o-mini",
+                model=self.model_name,
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
@@ -55,6 +79,9 @@ class ChatGPTService:
         except openai.APIConnectionError as e:
             print(f"Error: OpenAI API Connection Error: {e}")
             return f"Error: Could not connect to OpenAI API."
+        except openai.OpenAIError as e:
+            print(f"An OpenAI error occurred during ChatGPT request: {e}")
+            return f"An OpenAI error occurred: {e}"
         except Exception as e:
             print(f"An unexpected error occurred during ChatGPT request: {e}")
             return f"An unexpected error occurred: {e}"
