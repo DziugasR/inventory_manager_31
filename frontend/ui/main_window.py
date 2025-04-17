@@ -7,8 +7,8 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
+from .utils import load_stylesheet
 from backend.component_constants import BACKEND_TO_UI_TYPE_MAP
-
 from pathlib import Path
 
 class InventoryUI(QMainWindow):
@@ -43,7 +43,7 @@ class InventoryUI(QMainWindow):
 
         self.layout = QVBoxLayout(self.central_widget)
 
-        button_stylesheet = self._load_stylesheet()
+        button_stylesheet = load_stylesheet()
 
         button_layout = QHBoxLayout()
 
@@ -136,19 +136,6 @@ class InventoryUI(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._adjust_table_columns_for_resize()
-
-    def _load_stylesheet(self, filename="styles/button_styles.qss"):
-        script_dir = Path(__file__).parent
-        style_path = script_dir / filename
-        try:
-            with open(style_path, "r", encoding="utf-8") as f:
-                return f.read()
-        except FileNotFoundError:
-            print(f"Warning: Stylesheet not found at {style_path}")
-            return ""
-        except Exception as e:
-            print(f"Warning: Error reading stylesheet {style_path}: {e}")
-            return ""
 
     def _on_remove_clicked(self):
         ids_to_remove = self.get_checked_ids()

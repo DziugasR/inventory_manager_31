@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from functools import partial
 
 from pathlib import Path
+from .utils import load_stylesheet
 
 
 class GenerateIdeasDialog(QDialog):
@@ -65,8 +66,10 @@ class GenerateIdeasDialog(QDialog):
         self.response_display.setPlaceholderText("Click 'Generate Ideas' to get suggestions...")
         right_vertical_layout.addWidget(self.response_display, 1)
 
-        button_stylesheet = self._load_stylesheet()
-        self.setStyleSheet(button_stylesheet)
+        button_stylesheet = load_stylesheet()
+
+        if button_stylesheet:
+            self.setStyleSheet(button_stylesheet)
 
         self.generate_button = QPushButton("Generate Ideas")
         self.generate_button.setObjectName("generateIdeasButton")
@@ -80,19 +83,6 @@ class GenerateIdeasDialog(QDialog):
         main_layout.addWidget(table_widget, 2)
         main_layout.addWidget(controls_widget, 1)
         self.setLayout(main_layout)
-
-    def _load_stylesheet(self, filename="styles/button_styles.qss"):
-        script_dir = Path(__file__).parent
-        style_path = script_dir / filename
-        try:
-            with open(style_path, "r", encoding="utf-8") as f:
-                return f.read()
-        except FileNotFoundError:
-            print(f"Warning: Stylesheet not found at {style_path}")
-            return ""
-        except Exception as e:
-            print(f"Warning: Error reading stylesheet {style_path}: {e}")
-            return ""
 
     def populate_table(self, components, type_mapping):
         self.components_table.setRowCount(len(components))
