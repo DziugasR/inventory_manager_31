@@ -4,12 +4,8 @@ from functools import partial
 from frontend.ui.generate_ideas_dialog import GenerateIdeasDialog
 from backend.ChatGPT import ChatGPTService
 from backend.generate_ideas_backend import construct_generation_prompt
+from backend.component_constants import BACKEND_TO_UI_TYPE_MAP
 
-try:
-    from frontend.ui.add_component_dialog import AddComponentDialog
-except ImportError:
-    print("Warning: AddComponentDialog not found, type mapping may be incomplete.")
-    AddComponentDialog = None
 
 class ChatGPTWorker(QObject):
     finished = pyqtSignal(str)
@@ -34,35 +30,23 @@ class GenerateIdeasController(QObject):
         self.view = GenerateIdeasDialog(parent)
         self.chatgpt_service = ChatGPTService()
 
-        self._type_mapping = self._get_type_mapping()
+        self._backend_to_ui_map = BACKEND_TO_UI_TYPE_MAP
+
         self._worker_thread = None
         self._worker = None
 
         self._connect_signals()
-        self._initialize_view()
+        self._initialize_view(self._backend_to_ui_map)
 
         if not self.chatgpt_service.is_ready():
              print("Controller Warning: ChatGPT service failed to initialize.")
-
-
-    def _get_type_mapping(self):
-        if AddComponentDialog:
-             try:
-                 temp_dialog = AddComponentDialog()
-                 mapping = {v: k for k, v in temp_dialog.ui_to_backend_name_mapping.items()}
-                 del temp_dialog
-                 return mapping
-             except Exception as e:
-                 print(f"Error getting type mapping from AddComponentDialog: {e}")
-        return {}
 
     def _connect_signals(self):
         self.view.quantity_changed.connect(self._handle_quantity_change)
         self.view.generate_requested.connect(self._handle_generate_request)
 
-
-    def _initialize_view(self):
-        self.view.populate_table(self.components, self._type_mapping)
+    def _initialize_view(self, type_mapping):
+        self.view.populate_table(self.components, type_mapping)
 
     def show(self):
         self.view.exec_()
@@ -87,7 +71,7 @@ class GenerateIdeasController(QObject):
         prompt = construct_generation_prompt(
             self.components,
             current_spinbox_values,
-            self._type_mapping
+            self._backend_to_ui_map
         )
 
         if prompt is None:

@@ -4,6 +4,9 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import pyqtSignal
 
+from backend.component_constants import UI_TYPE_NAMES, UI_TO_BACKEND_TYPE_MAP
+from backend.exceptions import InvalidInputError
+
 class AddComponentDialog(QDialog):
     component_data_collected = pyqtSignal(dict)
 
@@ -13,7 +16,7 @@ class AddComponentDialog(QDialog):
         self.layout = QVBoxLayout(self)
         self.form_layout = QFormLayout()
 
-        # --- Component Types (UI definition remains) ---
+        # Keep this dictionary specifically for defining dynamic fields per type
         self.component_types = {
             "Resistor": ["Resistance (Ω)", "Tolerance (%)"],
             "Capacitor": ["Capacitance (µF)", "Voltage (V)"],
@@ -46,23 +49,10 @@ class AddComponentDialog(QDialog):
             "Battery": ["Voltage (V)", "Capacity (mAh)"],
             "Power Supply": ["Output Voltage (V)", "Output Current (A)"]
         }
-        # TODO Mapping for controller/backend use i kita faila krc
-        self.ui_to_backend_name_mapping = {
-            "Resistor": "resistor", "Capacitor": "capacitor", "Inductor": "inductor",
-            "Diode": "diode", "Transistor": "transistor", "LED": "led", "Relay": "relay",
-            "Op-Amp": "op_amp", "Voltage Regulator": "voltage_regulator",
-            "Microcontroller": "microcontroller", "IC": "ic", "MOSFET": "mosfet",
-            "Photodiode": "photodiode", "Switch": "switch", "Transformer": "transformer",
-            "Speaker": "speaker", "Motor": "motor", "Heat Sink": "heat_sink",
-            "Connector": "connector", "Crystal Oscillator": "crystal_oscillator",
-            "Buzzer": "buzzer", "Thermistor": "thermistor", "Varistor": "varistor",
-            "Fuse": "fuse", "Sensor": "sensor", "Antenna": "antenna",
-            "Breadboard": "breadboard", "Wire": "wire", "Battery": "battery",
-            "Power Supply": "power_supply"
-        }
 
         self.type_input = QComboBox(self)
-        self.type_input.addItems(self.component_types.keys())
+        # Use the imported constant list for dropdown population
+        self.type_input.addItems(UI_TYPE_NAMES)
         self.type_input.currentTextChanged.connect(self.update_fields)
         self.form_layout.addRow("Type:", self.type_input)
 
@@ -82,7 +72,7 @@ class AddComponentDialog(QDialog):
         self.datasheet_link_input = QLineEdit(self)
         self.form_layout.addRow("Datasheet Link:", self.datasheet_link_input)
 
-        self._create_dynamic_fields()  # Initial population
+        self._create_dynamic_fields()
 
         self.layout.addLayout(self.form_layout)
 
@@ -105,47 +95,63 @@ class AddComponentDialog(QDialog):
 
     def _create_dynamic_fields(self):
         selected_type = self.type_input.currentText()
+        # Use self.component_types here as it defines the dynamic field names
         fields = self.component_types.get(selected_type, [])
 
-        quantity_row_index = self.form_layout.rowCount() - 3
+        quantity_row_index = -1
+        for i in range(self.form_layout.rowCount()):
+            label_item = self.form_layout.itemAt(i, QFormLayout.LabelRole)
+            if label_item and isinstance(label_item.widget(), QLabel) and label_item.widget().text() == "Quantity:":
+                quantity_row_index = i
+                break
 
-        for field_name in fields:
+        insert_position = quantity_row_index if quantity_row_index != -1 else self.form_layout.rowCount() - 2 # Before links
+
+        for field_name in reversed(fields): # Insert in reverse to maintain order visually
             label = QLabel(field_name)
             input_field = QLineEdit(self)
-            self.form_layout.insertRow(quantity_row_index, label, input_field)
+            self.form_layout.insertRow(insert_position, label, input_field)
             self.dynamic_fields[field_name] = (label, input_field)
-            quantity_row_index += 1
 
     def validate_inputs(self):
         part_number = self.part_number_input.text().strip()
-
         if not part_number:
             QMessageBox.warning(self, "Input Error", "Part number is required.")
             return False
 
-        primary_value_field_name = None
-        if fields := self.component_types.get(self.type_input.currentText()):
-            primary_value_field_name = fields[0]
+        # Use self.component_types to check if a primary value is required
+        selected_type = self.type_input.currentText()
+        fields_for_type = self.component_types.get(selected_type, [])
+        primary_value_field_name = fields_for_type[0] if fields_for_type else None
 
         for field_name, (_, input_field) in self.dynamic_fields.items():
             value = input_field.text().strip()
-
             if field_name == primary_value_field_name and not value:
-                QMessageBox.warning(self, "Input Error", f"Primary value '{field_name}' is required.")
-                return False
+                 QMessageBox.warning(self, "Input Error", f"Primary value '{field_name}' is required for {selected_type}.")
+                 return False
+
         return True
 
     def get_component_data(self):
+        selected_ui_type = self.type_input.currentText()
+        backend_type_id = UI_TO_BACKEND_TYPE_MAP.get(selected_ui_type)
+
+        if backend_type_id is None:
+            QMessageBox.critical(self, "Internal Error", f"Could not map component type '{selected_ui_type}' to a backend identifier.")
+            raise InvalidInputError(f"Internal error mapping type: {selected_ui_type}")
 
         dynamic_values = []
         for field_name, (_, input_field) in self.dynamic_fields.items():
             value = input_field.text().strip()
-            dynamic_values.append(f"{field_name}: {value}")
+            if value:
+                dynamic_values.append(f"{field_name}: {value}")
+
+        value_str = ", ".join(dynamic_values)
 
         return {
             'part_number': self.part_number_input.text().strip(),
-            'component_type': self.ui_to_backend_name_mapping[self.type_input.currentText()],
-            'value': ", ".join(dynamic_values),
+            'component_type': backend_type_id,
+            'value': value_str,
             'quantity': self.quantity_input.value(),
             'purchase_link': self.purchase_link_input.text().strip(),
             'datasheet_link': self.datasheet_link_input.text().strip()
@@ -153,6 +159,12 @@ class AddComponentDialog(QDialog):
 
     def handle_accept(self):
         if self.validate_inputs():
-            component_data = self.get_component_data()
-            self.component_data_collected.emit(component_data)
-            self.accept()
+            try:
+                component_data = self.get_component_data()
+                self.component_data_collected.emit(component_data)
+                self.accept()
+            except InvalidInputError as e:
+                 print(f"Error collecting component data: {e}")
+            except Exception as e:
+                 QMessageBox.critical(self, "Error", f"An unexpected error occurred while gathering data: {e}")
+                 print(f"Unexpected error in handle_accept: {e}")

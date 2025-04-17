@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
-from frontend.ui.add_component_dialog import AddComponentDialog
+from backend.component_constants import BACKEND_TO_UI_TYPE_MAP
 
 from pathlib import Path
 
@@ -228,43 +228,31 @@ class InventoryUI(QMainWindow):
         self.table.setRowCount(0)
         self._checkboxes.clear()
         self._row_id_map.clear()
+        self.table.setRowCount(len(components))
+
+        backend_to_ui_name_mapping = BACKEND_TO_UI_TYPE_MAP
 
         if not components:
-
             self._update_buttons_state_on_checkbox()
             self.table.setSortingEnabled(True)
             return
 
         self.table.setRowCount(len(components))
 
-        try:
-            if not hasattr(self, '_backend_to_ui_map_cache'):
-
-                from frontend.ui.add_component_dialog import AddComponentDialog
-                temp_dialog = AddComponentDialog()
-                self._backend_to_ui_map_cache = {v: k for k, v in temp_dialog.ui_to_backend_name_mapping.items()}
-                del temp_dialog
-            backend_to_ui_name_mapping = self._backend_to_ui_map_cache
-        except (NameError, ImportError):
-            backend_to_ui_name_mapping = {}
-            print("Warning: AddComponentDialog not found or failed to import. Using raw backend names for types.")
-        except Exception as e:
-            backend_to_ui_name_mapping = {}
-            print(f"Warning: Error getting type name mapping: {e}")
-
         new_selection_row = -1
         for row, component in enumerate(components):
             component_id = component.id
             if not isinstance(component_id, uuid.UUID):
-                print(f"Warning: Invalid or missing ID for component {component.part_number} at row {row}. Skipping row.")
+                print(
+                    f"Warning: Invalid or missing ID for component {component.part_number} at row {row}. Skipping row.")
                 self.table.setRowHidden(row, True)
                 continue
 
             self._row_id_map[row] = component_id
-
             if component_id == current_selection_id:
                 new_selection_row = row
 
+            # Use the mapping with a fallback to the original backend ID if not found
             ui_component_type = backend_to_ui_name_mapping.get(component.component_type, component.component_type)
 
             pn_item = QTableWidgetItem(component.part_number or "")
@@ -281,7 +269,6 @@ class InventoryUI(QMainWindow):
                 qty_item.setData(Qt.EditRole, numeric_quantity)
             except (ValueError, TypeError):
                 qty_item.setData(Qt.EditRole, 0)
-
             qty_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.table.setItem(row, self.QUANTITY_COL, qty_item)
 
@@ -311,22 +298,17 @@ class InventoryUI(QMainWindow):
             layout.setAlignment(Qt.AlignCenter)
             layout.setContentsMargins(0, 0, 0, 0)
             cell_widget.setLayout(layout)
-
             checkbox.stateChanged.connect(self._update_buttons_state_on_checkbox)
             self._checkboxes.append(checkbox)
-
             self.table.setCellWidget(row, self.CHECKBOX_COL, cell_widget)
-
             item_for_checkbox_cell = QTableWidgetItem()
             item_for_checkbox_cell.setFlags(Qt.ItemIsEnabled)
             self.table.setItem(row, self.CHECKBOX_COL, item_for_checkbox_cell)
 
         self.table.setSortingEnabled(True)
-
         if new_selection_row != -1:
             self.table.selectRow(new_selection_row)
         else:
             self.table.clearSelection()
-
         self._update_buttons_state_on_checkbox()
         self._adjust_window_width()
