@@ -1,29 +1,36 @@
+import sys
 import os
-import configparser
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session as SessionType
+from sqlalchemy.engine import Engine
+from typing import Optional
 from .models import Base
 
-config = configparser.ConfigParser()
-config_path = os.path.join(os.path.dirname(__file__), '..', 'config.ini')
+engine: Optional[Engine] = None
+Session: Optional[sessionmaker[SessionType]] = None
 
-try:
-    if not config.read(config_path):
-         print(f"Warning: Configuration file '{config_path}' not found or empty.")
-         DATABASE_URL = "sqlite:///inventory.db"
-    else:
-        DATABASE_URL = config.get('Database', 'url', fallback="sqlite:///inventory.db")
+def initialize_database(database_url: str):
+    global engine, Session
 
-except configparser.Error as e:
-     print(f"Error reading configuration file '{config_path}': {e}")
-     DATABASE_URL = "sqlite:///inventory.db"
+    if engine is not None:
+        print("Warning: Database already initialized.")
+        return
 
-print(f"Using database URL: {DATABASE_URL}")
+    print(f"INFO: Initializing database with URL: {database_url}")
+    try:
+        engine = create_engine(database_url, echo=False)
+        Base.metadata.create_all(engine)
+        Session = sessionmaker(bind=engine)
+        with engine.connect() as connection:
+            print("INFO: Database connection successful (test).")
+    except Exception as e:
+        print(f"CRITICAL: Failed during database engine creation or table setup for {database_url}: {e}")
+        engine = None
+        Session = None
+        raise
 
-engine = create_engine(DATABASE_URL, echo=True)
-
-Base.metadata.create_all(engine)
-Session = sessionmaker(bind=engine)
-
-def get_session():
-    return Session()
+def get_session() -> SessionType:
+    if Session is None:
+        raise RuntimeError("Database has not been initialized. Call initialize_database() first.")
+    session = Session()
+    return session

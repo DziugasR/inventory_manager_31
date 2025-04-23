@@ -1,29 +1,18 @@
+import sys
 import os
 import openai
-from dotenv import load_dotenv
-import configparser
+from typing import Optional
 
 class ChatGPTService:
-    def __init__(self):
-        load_dotenv()
+    def __init__(self, config_model_name: Optional[str] = None):
         self.api_key = os.getenv("OPENAI_API_KEY")
 
-        config = configparser.ConfigParser()
-        config_path = 'config.ini'
+        if not self.api_key:
+             print("WARNING: ChatGPTService initialized, but OPENAI_API_KEY is missing!")
+
         default_model = 'gpt-4o-mini'
-        self.model_name = default_model
-
-        try:
-            if config.read(config_path):
-                self.model_name = config.get('OpenAI', 'model', fallback=default_model)
-            else:
-                print(f"Warning: Configuration file '{config_path}' not found or empty. Using default OpenAI model: {self.model_name}")
-        except configparser.Error as e:
-            print(f"Error reading configuration file '{config_path}': {e}. Using default OpenAI model: {self.model_name}")
-        except Exception as e:
-             print(f"Unexpected error reading config file '{config_path}': {e}. Using default OpenAI model: {self.model_name}")
-
-        print(f"INFO: Using OpenAI model: {self.model_name}")
+        self.model_name = config_model_name if config_model_name else default_model
+        print(f"INFO: ChatGPTService using model: {self.model_name}")
 
         if not self.api_key:
             self.client = None
@@ -58,18 +47,14 @@ class ChatGPTService:
         try:
             response = self.__execute_chat_completion(
                 model=self.model_name,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
+                messages=[ {"role": "user", "content": prompt} ],
                 temperature=0.7,
                 max_tokens=1000
             )
             if response.choices:
-                generated_text = response.choices[0].message.content.strip()
-                return generated_text
+                return response.choices[0].message.content.strip()
             else:
                 return "Error: No response choices received from ChatGPT."
-
         except openai.AuthenticationError:
              print("Error: OpenAI Authentication Failed. Check your API key.")
              return "Error: OpenAI Authentication Failed. Invalid API key?"

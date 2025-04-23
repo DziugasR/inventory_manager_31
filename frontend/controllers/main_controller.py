@@ -1,5 +1,4 @@
 import uuid
-
 from PyQt5.QtWidgets import QMessageBox, QInputDialog
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtCore import QObject, QUrl
@@ -16,11 +15,13 @@ from backend.exceptions import (
     InvalidQuantityError, ComponentNotFoundError, StockError, DatabaseError,
     DuplicateComponentError, InvalidInputError
 )
+from backend.database import get_session # Added import
 
 class MainController(QObject):
-    def __init__(self, view: InventoryUI):
+    def __init__(self, view: InventoryUI, openai_model: str):
         super().__init__()
         self._view = view
+        self._openai_model = openai_model
         self._import_export_controller = ImportExportController(self._view, self)
         self._connect_signals()
         self._load_initial_data()
@@ -40,7 +41,7 @@ class MainController(QObject):
     def load_inventory_data(self):
         try:
             components = get_all_components()
-            self._view.display_data(components) # View needs to handle Component objects correctly
+            self._view.display_data(components)
         except DatabaseError as e:
             self._show_message("Database Error", f"Failed to load inventory: {e}", level="critical")
         except Exception as e:
@@ -149,7 +150,6 @@ class MainController(QObject):
                 messages.append(f"- {part_number_display}: Removed {quantity_to_remove} units (remaining: {current_quantity - quantity_to_remove}).")
                 success_count += 1
             except (InvalidQuantityError, ComponentNotFoundError, StockError, DatabaseError) as e:
-
                 messages.append(f"- {part_number_display}: Removal error - {e}")
                 failure_count += 1
             except Exception as e:
@@ -193,11 +193,10 @@ class MainController(QObject):
             self._show_message("Data Fetch Warning", error_message, level="warning")
 
         if not selected_components:
-            self._show_message("Generate Ideas", "Could not retrieve details for any selected components.",
-                               level="warning")
+            self._show_message("Generate Ideas", "Could not retrieve details for any selected components.", level="warning")
             return
 
-        idea_controller = GenerateIdeasController(selected_components, self._view)
+        idea_controller = GenerateIdeasController(selected_components, self._openai_model, self._view)
         idea_controller.show()
 
     def open_link_in_browser(self, url: QUrl):
@@ -207,7 +206,7 @@ class MainController(QObject):
             self._show_message("Invalid Link", "The selected link is not valid.", level="warning")
 
     def _show_message(self, title: str, text: str, level: str = "info"):
-        msg_box = QMessageBox(self._view) # Ensure parent is set
+        msg_box = QMessageBox(self._view)
         msg_box.setWindowTitle(title)
         msg_box.setText(text)
         if level == "info":
@@ -217,7 +216,7 @@ class MainController(QObject):
         elif level == "critical":
             msg_box.setIcon(QMessageBox.Critical)
         else:
-            msg_box.setIcon(QMessageBox.NoIcon) # Or Information as default
+            msg_box.setIcon(QMessageBox.NoIcon)
         msg_box.exec_()
 
     def show_view(self):
