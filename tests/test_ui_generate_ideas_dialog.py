@@ -1,4 +1,3 @@
-# test_ui_generate_ideas_dialog.py
 import sys
 import unittest
 from unittest.mock import MagicMock
@@ -8,7 +7,6 @@ from PyQt5.QtWidgets import QApplication, QTableWidgetItem, QSpinBox
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtTest import QTest, QSignalSpy
 
-# Assuming generate_ideas_dialog.py is in the same directory or accessible via PYTHONPATH
 from frontend.ui.generate_ideas_dialog import GenerateIdeasDialog
 
 class MockComponent:
@@ -29,7 +27,7 @@ class TestGenerateIdeasDialog(unittest.TestCase):
             MockComponent("C202", "CAP", "100nF", 10),
             MockComponent("U303", "IC", "ATmega328", 0),
             MockComponent("LED404", "LED", "Red", 20),
-            MockComponent(None, "DIODE", "1N4001", 8) # Component with None part number
+            MockComponent(None, "DIODE", "1N4001", 8)
         ]
         self.type_mapping = {
             "RES": "Resistor",
@@ -74,11 +72,10 @@ class TestGenerateIdeasDialog(unittest.TestCase):
         self.dialog.populate_table(self.mock_components, self.type_mapping)
         num_components = len(self.mock_components)
         self.assertEqual(self.dialog.components_table.rowCount(), num_components)
-        # Check that a spinbox entry is created for *all* components, using "" for None PN
-        self.assertEqual(len(self.dialog._spinboxes), num_components) # FIX: Changed from num_components - 1
+        self.assertEqual(len(self.dialog._spinboxes), num_components)
 
         for row, comp in enumerate(self.mock_components):
-            pn = comp.part_number or "" # Converts None to ""
+            pn = comp.part_number or ""
             ctype = self.type_mapping.get(comp.component_type, comp.component_type)
             val = comp.value or ""
             avail_qty = comp.quantity
@@ -96,7 +93,6 @@ class TestGenerateIdeasDialog(unittest.TestCase):
             self.assertIn(f"Available: {avail_qty}", spinbox_widget.toolTip())
             self.assertIn(f"Current project quantity: {expected_initial_qty}", spinbox_widget.toolTip())
 
-            # Check internal tracker using the actual key (pn, which is "" for None)
             self.assertIn(pn, self.dialog._spinboxes)
             self.assertIs(self.dialog._spinboxes[pn], spinbox_widget)
 
@@ -113,14 +109,13 @@ class TestGenerateIdeasDialog(unittest.TestCase):
         self.dialog.populate_table(self.mock_components, self.type_mapping)
         values = self.dialog.get_spinbox_values()
 
-        # Should include entry for the None PN component, keyed by ""
-        self.assertEqual(len(values), 5) # FIX: Changed from 4
+        self.assertEqual(len(values), 5)
 
         self.assertEqual(values.get("R101"), 1)
         self.assertEqual(values.get("C202"), 1)
         self.assertEqual(values.get("U303"), 0)
         self.assertEqual(values.get("LED404"), 1)
-        self.assertEqual(values.get(""), 1) # FIX: Check for empty string key (was None PN)
+        self.assertEqual(values.get(""), 1)
 
     def test_get_spinbox_values_after_change(self):
         self.dialog.populate_table(self.mock_components, self.type_mapping)
@@ -135,7 +130,7 @@ class TestGenerateIdeasDialog(unittest.TestCase):
         values = self.dialog.get_spinbox_values()
         self.assertEqual(values.get("R101"), new_value)
         self.assertEqual(values.get("C202"), 1)
-        self.assertEqual(values.get(""), 1) # Check that "" key wasn't affected
+        self.assertEqual(values.get(""), 1)
 
     def test_set_clear_response_text(self):
         test_text = "These are the generated ideas:\n- Idea 1\n- Idea 2"
@@ -166,8 +161,6 @@ class TestGenerateIdeasDialog(unittest.TestCase):
         self.assertTrue(self.dialog.generate_button.isEnabled())
         self.assertTrue(self.dialog.components_table.isEnabled())
 
-        # FIX: Check placeholder text is NOT the "Generating..." one,
-        # because it might still be the default "Click..." one if text is present.
         self.assertNotEqual(self.dialog.response_display.placeholderText(), "Generating ideas from ChatGPT...")
         self.assertEqual(self.dialog.response_display.toPlainText(), "Generated text")
 
@@ -197,7 +190,6 @@ class TestGenerateIdeasDialog(unittest.TestCase):
         QApplication.processEvents()
 
         self.assertEqual(len(spy), 1)
-        # FIX: Correct way to get arguments from QSignalSpy
         emitted_args = spy[0]
         self.assertEqual(len(emitted_args), 2)
         self.assertEqual(emitted_args[0], part_number_to_test)

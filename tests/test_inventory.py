@@ -9,7 +9,7 @@ from backend.exceptions import (
     DatabaseError, ComponentError
 )
 
-# Use simple Component mocks for testing purposes
+
 class MockComponent(MagicMock):
     def __init__(self, id=None, part_number="PN123", component_type="Resistor", value="10k", quantity=100, purchase_link=None, datasheet_link=None, **kwargs):
         super().__init__(**kwargs)
@@ -21,17 +21,15 @@ class MockComponent(MagicMock):
         self.purchase_link = purchase_link
         self.datasheet_link = datasheet_link
 
-    # Need to define __eq__ for comparisons in tests if using MagicMock directly
     def __eq__(self, other):
         if not isinstance(other, MockComponent):
             return NotImplemented
         return self.id == other.id
 
-# Test suite for inventory functions
+
 class TestInventory(unittest.TestCase):
 
     def setUp(self):
-        # Create some mock components for use in tests
         self.comp1_id = uuid.uuid4()
         self.comp2_id = uuid.uuid4()
         self.mock_comp1 = MockComponent(id=self.comp1_id, part_number="PN101", quantity=50)
@@ -61,14 +59,14 @@ class TestInventory(unittest.TestCase):
     def test_add_component_invalid_part_number(self, mock_factory, mock_get_session):
         with self.assertRaisesRegex(InvalidInputError, "Part number cannot be empty."):
             inventory.add_component("", "Resistor", "1k", 100, None, None)
-        mock_get_session.assert_not_called() # Should fail before getting session
+        mock_get_session.assert_not_called()
 
     @patch('backend.inventory.get_session')
     @patch('backend.inventory.ComponentFactory')
     def test_add_component_invalid_quantity(self, mock_factory, mock_get_session):
         with self.assertRaisesRegex(InvalidQuantityError, "Quantity cannot be negative."):
             inventory.add_component("PN999", "Resistor", "1k", -1, None, None)
-        mock_get_session.assert_not_called() # Should fail before getting session
+        mock_get_session.assert_not_called()
 
     @patch('backend.inventory.get_session')
     @patch('backend.inventory.ComponentFactory')
@@ -82,7 +80,7 @@ class TestInventory(unittest.TestCase):
 
         mock_session.add.assert_not_called()
         mock_session.commit.assert_not_called()
-        mock_session.rollback.assert_called_once() # Factory error happens before add/commit
+        mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
 
     @patch('backend.inventory.get_session')
@@ -123,7 +121,7 @@ class TestInventory(unittest.TestCase):
     def test_remove_component_quantity_success_partial(self, mock_get_session):
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
-        # Make a copy to avoid modifying the original mock in setUp
+
         component_to_update = MockComponent(id=self.comp1_id, part_number="PN101", quantity=50)
         mock_session.query.return_value.filter_by.return_value.first.return_value = component_to_update
 
@@ -147,7 +145,7 @@ class TestInventory(unittest.TestCase):
         result = inventory.remove_component_quantity(self.comp2_id, 10)
 
         mock_session.query.return_value.filter_by.assert_called_once_with(id=self.comp2_id)
-        self.assertEqual(component_to_delete.quantity, 0) # Quantity is updated first
+        self.assertEqual(component_to_delete.quantity, 0)
         mock_session.delete.assert_called_once_with(component_to_delete)
         mock_session.commit.assert_called_once()
         mock_session.close.assert_called_once()
@@ -168,7 +166,7 @@ class TestInventory(unittest.TestCase):
     @patch('backend.inventory.get_session')
     def test_remove_component_quantity_invalid_quantity_type(self, mock_get_session):
         with self.assertRaisesRegex(InvalidQuantityError, "Quantity must be a positive integer"):
-            inventory.remove_component_quantity(self.comp1_id, "abc") # type: ignore
+            inventory.remove_component_quantity(self.comp1_id, "abc")
         mock_get_session.assert_not_called()
 
     @patch('backend.inventory.get_session')
@@ -183,21 +181,21 @@ class TestInventory(unittest.TestCase):
 
         mock_session.query.return_value.filter_by.assert_called_once_with(id=non_existent_id)
         mock_session.commit.assert_not_called()
-        mock_session.rollback.assert_called_once() # Exception occurred
+        mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
 
     @patch('backend.inventory.get_session')
     def test_remove_component_quantity_stock_error(self, mock_get_session):
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
-        mock_session.query.return_value.filter_by.return_value.first.return_value = self.mock_comp2 # Has quantity 10
+        mock_session.query.return_value.filter_by.return_value.first.return_value = self.mock_comp2
 
         with self.assertRaisesRegex(StockError, "Not enough stock"):
             inventory.remove_component_quantity(self.comp2_id, 15)
 
         mock_session.query.return_value.filter_by.assert_called_once_with(id=self.comp2_id)
         mock_session.commit.assert_not_called()
-        mock_session.rollback.assert_called_once() # Exception occurred
+        mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
 
     @patch('backend.inventory.get_session')
@@ -211,7 +209,7 @@ class TestInventory(unittest.TestCase):
         with self.assertRaisesRegex(DatabaseError, "Error while removing component: Simulated DB error on commit"):
             inventory.remove_component_quantity(self.comp1_id, 10)
 
-        self.assertEqual(component_to_update.quantity, 40) # Update happens before commit
+        self.assertEqual(component_to_update.quantity, 40)
         mock_session.commit.assert_called_once()
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
@@ -227,7 +225,7 @@ class TestInventory(unittest.TestCase):
         with self.assertRaisesRegex(DatabaseError, "Error while removing component: Simulated DB error on commit during delete"):
             inventory.remove_component_quantity(self.comp2_id, 10)
 
-        self.assertEqual(component_to_delete.quantity, 0) # Update happens before delete/commit
+        self.assertEqual(component_to_delete.quantity, 0)
         mock_session.delete.assert_called_once_with(component_to_delete)
         mock_session.commit.assert_called_once()
         mock_session.rollback.assert_called_once()
@@ -275,7 +273,7 @@ class TestInventory(unittest.TestCase):
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
         mock_components_list = [self.mock_comp1, self.mock_comp2]
-        # Simulate the chain query().order_by().all()
+
         mock_session.query.return_value.order_by.return_value.all.return_value = mock_components_list
 
         result = inventory.get_all_components()
@@ -334,7 +332,7 @@ class TestInventory(unittest.TestCase):
     @patch('backend.inventory.get_session')
     def test_update_component_quantity_invalid_quantity_type(self, mock_get_session):
         with self.assertRaisesRegex(InvalidQuantityError, "Quantity must be a non-negative integer"):
-            inventory.update_component_quantity(self.comp1_id, "invalid") # type: ignore
+            inventory.update_component_quantity(self.comp1_id, "invalid")
         mock_get_session.assert_not_called()
 
     @patch('backend.inventory.get_session')
@@ -349,7 +347,7 @@ class TestInventory(unittest.TestCase):
 
         mock_session.query.return_value.filter_by.assert_called_once_with(id=non_existent_id)
         mock_session.commit.assert_not_called()
-        mock_session.rollback.assert_called_once() # Exception occurred
+        mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
 
     @patch('backend.inventory.get_session')
@@ -363,7 +361,7 @@ class TestInventory(unittest.TestCase):
         with self.assertRaisesRegex(DatabaseError, "Error while updating component quantity: Simulated DB error on commit"):
             inventory.update_component_quantity(self.comp1_id, 100)
 
-        self.assertEqual(component_to_update.quantity, 100) # Update happens before commit
+        self.assertEqual(component_to_update.quantity, 100)
         mock_session.commit.assert_called_once()
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
@@ -399,7 +397,7 @@ class TestInventory(unittest.TestCase):
     def test_select_multiple_components_no_match(self, mock_get_session):
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
-        ids_to_select = [uuid.uuid4()] # Non-existent ID
+        ids_to_select = [uuid.uuid4()]
         mock_session.query.return_value.filter.return_value.all.return_value = []
 
         result = inventory.select_multiple_components(ids_to_select)
