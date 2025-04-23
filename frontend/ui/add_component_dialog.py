@@ -13,10 +13,10 @@ class AddComponentDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Add New Component")
+
         self.layout = QVBoxLayout(self)
         self.form_layout = QFormLayout()
 
-        # Keep this dictionary specifically for defining dynamic fields per type
         self.component_types = {
             "Resistor": ["Resistance (Ω)", "Tolerance (%)"],
             "Capacitor": ["Capacitance (µF)", "Voltage (V)"],
@@ -51,7 +51,7 @@ class AddComponentDialog(QDialog):
         }
 
         self.type_input = QComboBox(self)
-        # Use the imported constant list for dropdown population
+
         self.type_input.addItems(UI_TYPE_NAMES)
         self.type_input.currentTextChanged.connect(self.update_fields)
         self.form_layout.addRow("Type:", self.type_input)
@@ -95,7 +95,6 @@ class AddComponentDialog(QDialog):
 
     def _create_dynamic_fields(self):
         selected_type = self.type_input.currentText()
-        # Use self.component_types here as it defines the dynamic field names
         fields = self.component_types.get(selected_type, [])
 
         quantity_row_index = -1
@@ -107,7 +106,7 @@ class AddComponentDialog(QDialog):
 
         insert_position = quantity_row_index if quantity_row_index != -1 else self.form_layout.rowCount() - 2 # Before links
 
-        for field_name in reversed(fields): # Insert in reverse to maintain order visually
+        for field_name in reversed(fields):
             label = QLabel(field_name)
             input_field = QLineEdit(self)
             self.form_layout.insertRow(insert_position, label, input_field)
@@ -119,7 +118,6 @@ class AddComponentDialog(QDialog):
             QMessageBox.warning(self, "Input Error", "Part number is required.")
             return False
 
-        # Use self.component_types to check if a primary value is required
         selected_type = self.type_input.currentText()
         fields_for_type = self.component_types.get(selected_type, [])
         primary_value_field_name = fields_for_type[0] if fields_for_type else None
