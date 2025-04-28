@@ -12,8 +12,8 @@ def construct_generation_prompt(components, selected_quantities, type_mapping):
     if not component_details:
         return None
 
-    prompt = "You are an electronics lecturer creating TWO extremely concise project idea using ONLY the components listed if needed you can add more components.\n\n"
-    prompt += "Generate TWO specific project using EXACTLY these components and quantities. Build ONLY with these parts.\n\n"
+    prompt = "You are an electronics lecturer creating THREE extremely concise project idea using the components listed if needed you can add more components.\n\n"
+    prompt += "Generate THREE specific project using these components and quantities. Projects including parts not selected also could be mentioned but must be useful, using most of the mentioned components.\n\n"
     prompt += "Available Components:\n"
     prompt += "\n".join(component_details)
     prompt += "\n\nUse this strict format (plain text, no markdown headers):\n\n"
