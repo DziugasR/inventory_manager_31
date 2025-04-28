@@ -15,7 +15,6 @@ from backend.exceptions import (
     InvalidQuantityError, ComponentNotFoundError, StockError, DatabaseError,
     DuplicateComponentError, InvalidInputError
 )
-from backend.database import get_session # Added import
 
 class MainController(QObject):
     def __init__(self, view: InventoryUI, openai_model: str):

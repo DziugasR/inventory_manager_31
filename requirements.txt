@@ -6,8 +6,6 @@ requests==2.32.3
 PyQt5==5.15.11
 
 # auxiliary
-faker==37.0.0
-
 openai==1.72.0
 
 dotenv~=0.9.9

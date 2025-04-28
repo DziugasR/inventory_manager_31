@@ -105,8 +105,6 @@ class InventoryUI(QMainWindow):
         self.table.cellClicked.connect(self._handle_cell_click)
 
     def _adjust_window_width(self):
-        """Adjusts window width to fit table contents."""
-        # (Keep this method as it was)
         total_width = self.table.verticalHeader().width()
         for i in range(self.table.columnCount()):
             total_width += self.table.columnWidth(i)

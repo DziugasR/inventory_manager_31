@@ -29,7 +29,6 @@ class ImportExportController(QObject):
             try:
                 success = export_to_excel(filename)
                 if success:
-                    # Use main_controller's message function for consistency
                     self._main_controller._show_message(
                         "Export Successful",
                         f"Inventory successfully exported to:\n{filename}",
@@ -50,7 +49,6 @@ class ImportExportController(QObject):
                  )
 
     def handle_import_request(self):
-        """Handles the request to import inventory data from an Excel file."""
         confirm = QMessageBox.question(
             self._view,
             "Confirm Import",
