@@ -949,11 +949,13 @@ The application utilizes file operations for configuration, styling, and core da
 
 **Conclusions:**
 
-*   The project successfully demonstrates the application of the four pillars of OOP (Inheritance, Abstraction, Encapsulation, Polymorphism) to model the application's domain effectively.
-*   The Factory Method design pattern was successfully implemented to decouple component instantiation logic, improving maintainability.
-*   Experience was gained in integrating disparate technologies: PyQt5 for the GUI, SQLAlchemy for database ORM, Pandas for file I/O, and the OpenAI API for special functions.
-*   The development process highlighted the importance of asynchronous operations (using `QThread`) in GUI applications to maintain responsiveness during long-running tasks like API calls.
-*   The project underscored the challenges associated with unit testing components tightly coupled with a GUI framework like PyQt5, emphasizing the need for mocking or specialized testing tools.
+*   The project successfully demonstrates the application of OOP principles (Inheritance, Abstraction, Encapsulation, Polymorphism) and design patterns (Factory Method, MVC variant, Observer via signals/slots) to build a functional desktop application.
+*   Experience was gained integrating PyQt5 (GUI), SQLAlchemy (ORM), Pandas (File I/O), and the OpenAI API, including using `QThread` for responsive API calls.
+*   Key challenges overcome included:
+    *   Refactoring the data model (`backend/models.py`, `backend/inventory.py`) mid-development to use a unique UUID (`id`) instead of `part_number` as the primary key, which required updating logic throughout the whole application to represent real-world components.
+    *   Implementing dynamic UI fields in the Add Component dialog (`frontend/ui/add_component_dialog.py`) to change input prompts based on the selected component type.
+    *   Addressing the difficulty of unit testing GUI-coupled controller classes (`frontend/controllers/`) due to tight framework integration and the complexity of mocking UI interactions effectively.
+
 
 **Potential Extensions:**
 
@@ -962,7 +964,7 @@ The application utilizes file operations for configuration, styling, and core da
 *   **Low Stock Notifications:** Implement visual cues or notifications when component quantities fall below a user-defined threshold.
 *   **Component Images:** Add functionality to associate image files with component entries.
 *   **Advanced Search/Filtering:** Implement more sophisticated searching capabilities within the inventory table (e.g., filtering by value range, multiple criteria).
-*   **Multiple inventory tables:** Implement multiple inventory tables for different component inventorization needs.
+*   **Multiple inventory tables:** Implement multiple inventory tables for different component inventory needs.
 
 
 ## 4. Resources, References List
