@@ -13,7 +13,7 @@ from openpyxl.styles import Font, Alignment , PatternFill
 EXCEL_COLUMNS = ["Part Number", "Type", "Value", "Quantity", "Purchase Link", "Datasheet Link"]
 REQUIRED_IMPORT_COLUMNS = ["Part Number", "Type", "Value", "Quantity"]
 
-def export_to_excel(filename: str) -> bool:
+def export_to_excel(filename: str) -> bool | None:
     components_data = []
     session = get_session()
     try:
@@ -76,7 +76,7 @@ def export_to_excel(filename: str) -> bool:
     except Exception as e:
         raise Exception(f"An unexpected error occurred during Excel export formatting/writing: {e}") from e
 
-def import_from_excel(filename: str) -> bool:
+def import_from_excel(filename: str) -> bool | None:
     try:
         df = pd.read_excel(filename, engine='openpyxl')
     except FileNotFoundError:

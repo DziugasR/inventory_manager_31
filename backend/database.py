@@ -1,5 +1,3 @@
-import sys
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session as SessionType
 from sqlalchemy.engine import Engine

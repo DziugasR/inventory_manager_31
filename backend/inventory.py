@@ -7,7 +7,7 @@ from backend.component_factory import ComponentFactory
 import backend.exceptions
 
 def add_component(part_number: str, component_type: str, value: str, quantity: int,
-                   purchase_link: str | None, datasheet_link: str | None) -> Component:
+                   purchase_link: str | None, datasheet_link: str | None) -> Component | None:
     if not part_number:
         raise backend.exceptions.InvalidInputError("Part number cannot be empty.")
     if quantity < 0:

@@ -1,4 +1,3 @@
-import sys
 import os
 import openai
 from typing import Optional

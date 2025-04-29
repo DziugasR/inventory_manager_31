@@ -101,7 +101,7 @@ def test_get_component_data_correct_resistor(dialog, qtbot):
     qtbot.wait(20)
     dialog.part_number_input.setText(" R102 ")
     dialog.quantity_input.setValue(123)
-    dialog.purchase_link_input.setText(" http://example.com/buy ")
+    dialog.purchase_link_input.setText(" https://example.com/buy ")
     dialog.datasheet_link_input.setText(" ")
     resistance_label, resistance_input = dialog.dynamic_fields["Resistance (Ω)"]
     resistance_input.setText(" 4.7k ")
@@ -112,7 +112,7 @@ def test_get_component_data_correct_resistor(dialog, qtbot):
     assert data['part_number'] == 'R102'
     assert data['component_type'] == expected_backend_id
     assert data['quantity'] == 123
-    assert data['purchase_link'] == 'http://example.com/buy'
+    assert data['purchase_link'] == 'https://example.com/buy'
     assert data['datasheet_link'] == ''
     assert "Resistance (Ω): 4.7k" in data['value']
     assert "Tolerance (%): 1%" in data['value']
