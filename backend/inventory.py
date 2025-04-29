@@ -78,7 +78,7 @@ def get_component_by_id(component_id: uuid.UUID) -> Component | None:
         session.close()
 
 
-def get_all_components() -> list[Component]:
+def get_all_components() -> list[Component] | None:
     session = get_session()
     try:
         return session.query(Component).order_by(Component.part_number).all()
@@ -88,7 +88,7 @@ def get_all_components() -> list[Component]:
         session.close()
 
 
-def update_component_quantity(component_id: uuid.UUID, new_quantity: int) -> Component:
+def update_component_quantity(component_id: uuid.UUID, new_quantity: int) -> Component | None:
     if not isinstance(new_quantity, int) or new_quantity < 0:
         raise backend.exceptions.InvalidQuantityError("Quantity must be a non-negative integer")
 
@@ -110,7 +110,7 @@ def update_component_quantity(component_id: uuid.UUID, new_quantity: int) -> Com
         session.close()
 
 
-def select_multiple_components(component_ids: list[uuid.UUID]) -> list[Component]:
+def select_multiple_components(component_ids: list[uuid.UUID]) -> list[Component] | None:
     if not component_ids:
         return []
 
@@ -126,7 +126,7 @@ def select_multiple_components(component_ids: list[uuid.UUID]) -> list[Component
         session.close()
 
 
-def get_components_by_part_number(part_number: str) -> list[Component]:
+def get_components_by_part_number(part_number: str) -> list[Component] | None:
     session = get_session()
     try:
         return session.query(Component).filter_by(part_number=part_number).all()

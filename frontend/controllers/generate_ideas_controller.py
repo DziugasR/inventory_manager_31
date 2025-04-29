@@ -1,12 +1,12 @@
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from functools import partial
-from typing import List, Dict, Optional # Added imports
+from typing import List, Dict, Optional
 
 from frontend.ui.generate_ideas_dialog import GenerateIdeasDialog
 from backend.ChatGPT import ChatGPTService
 from backend.generate_ideas_backend import construct_generation_prompt
 from backend.component_constants import BACKEND_TO_UI_TYPE_MAP
-from backend.models import Component # Added import
+from backend.models import Component
 
 class ChatGPTWorker(QObject):
     finished = pyqtSignal(str)
