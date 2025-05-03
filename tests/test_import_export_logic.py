@@ -1,7 +1,7 @@
 import unittest
 import pandas as pd
 import uuid
-from unittest.mock import patch, MagicMock, mock_open, ANY
+from unittest.mock import patch, MagicMock
 
 from backend import import_export_logic
 from backend.models import Component
@@ -20,10 +20,10 @@ class MockDbComponent:
 
 
 class MockCreatedComponent:
-     def __init__(self, **kwargs):
-         self.id = uuid.uuid4()
-         for key, value in kwargs.items():
-             setattr(self, key, value)
+    def __init__(self, **kwargs):
+        self.id = uuid.uuid4()
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 class TestImportExportLogic(unittest.TestCase):
@@ -53,7 +53,6 @@ class TestImportExportLogic(unittest.TestCase):
         mock_excel_writer_context.__enter__.return_value = mock_excel_writer_instance
         import_export_logic.ExcelWriter.return_value = mock_excel_writer_context
 
-
         filename = "test_export.xlsx"
         result = import_export_logic.export_to_excel(filename)
 
@@ -64,15 +63,17 @@ class TestImportExportLogic(unittest.TestCase):
         mock_ordered_query.all.assert_called_once()
 
         expected_df_data = [
-            {"Part Number": "R101", "Type": "resistor", "Value": "10k", "Quantity": 5, "Purchase Link": "link1", "Datasheet Link": "link2"},
-            {"Part Number": "C202", "Type": "capacitor", "Value": "1uF", "Quantity": 10, "Purchase Link": None, "Datasheet Link": None},
+            {"Part Number": "R101", "Type": "resistor", "Value": "10k", "Quantity": 5, "Purchase Link": "link1",
+             "Datasheet Link": "link2"},
+            {"Part Number": "C202", "Type": "capacitor", "Value": "1uF", "Quantity": 10, "Purchase Link": None,
+             "Datasheet Link": None},
         ]
         mock_pd_dataframe.assert_called_once_with(expected_df_data, columns=import_export_logic.EXCEL_COLUMNS)
 
         import_export_logic.ExcelWriter.assert_called_once_with(filename, engine='openpyxl')
-        mock_df_instance.to_excel.assert_called_once_with(mock_excel_writer_instance, sheet_name='Inventory', index=False, header=True)
+        mock_df_instance.to_excel.assert_called_once_with(mock_excel_writer_instance, sheet_name='Inventory',
+                                                          index=False, header=True)
         mock_session.close.assert_called_once()
-
 
     @patch('backend.import_export_logic.get_session')
     def test_export_to_excel_db_error(self, mock_get_session):
@@ -107,7 +108,6 @@ class TestImportExportLogic(unittest.TestCase):
 
         mock_session.close.assert_called_once()
 
-
     @patch('backend.import_export_logic.ComponentFactory.create_component')
     @patch('backend.import_export_logic.get_session')
     @patch('backend.import_export_logic.pd.read_excel')
@@ -138,15 +138,17 @@ class TestImportExportLogic(unittest.TestCase):
         mock_session.query(Component).delete.assert_called_once()
 
         self.assertEqual(mock_create_component.call_count, 3)
-        mock_create_component.assert_any_call(component_type='resistor', part_number='PN101', value='1k', quantity=50, purchase_link='link1', datasheet_link=None)
-        mock_create_component.assert_any_call(component_type='capacitor', part_number='PN102', value='10uF', quantity=10, purchase_link=None, datasheet_link='link_ds_2')
-        mock_create_component.assert_any_call(component_type='led', part_number='PN103', value='5mm Red', quantity=100, purchase_link=None, datasheet_link='link_ds_3')
+        mock_create_component.assert_any_call(component_type='resistor', part_number='PN101', value='1k', quantity=50,
+                                              purchase_link='link1', datasheet_link=None)
+        mock_create_component.assert_any_call(component_type='capacitor', part_number='PN102', value='10uF',
+                                              quantity=10, purchase_link=None, datasheet_link='link_ds_2')
+        mock_create_component.assert_any_call(component_type='led', part_number='PN103', value='5mm Red', quantity=100,
+                                              purchase_link=None, datasheet_link='link_ds_3')
 
         self.assertEqual(mock_session.add.call_count, 3)
         mock_session.commit.assert_called_once()
         mock_session.rollback.assert_not_called()
         mock_session.close.assert_called_once()
-
 
     @patch('backend.import_export_logic.pd.read_excel')
     def test_import_from_excel_file_not_found(self, mock_read_excel):
@@ -184,7 +186,7 @@ class TestImportExportLogic(unittest.TestCase):
         mock_read_excel.return_value = mock_df
         filename = "invalid_row.xlsx"
         with self.assertRaisesRegex(InvalidInputError, "Invalid data found in row 2.*Quantity cannot be negative"):
-             import_export_logic.import_from_excel(filename)
+            import_export_logic.import_from_excel(filename)
 
     @patch('backend.import_export_logic.ComponentFactory.create_component')
     @patch('backend.import_export_logic.get_session')

@@ -6,6 +6,7 @@ from abc import abstractmethod
 
 Base = declarative_base()
 
+
 class Component(Base):
     __tablename__ = "components"
 
@@ -35,7 +36,7 @@ def create_component_class(class_name, polymorphic_id, spec_format_string):
         parts = spec_format_string.split()
 
         if len(parts) > 1:
-            unit = " " + parts[-1] # Assumes last word is the unit
+            unit = " " + parts[-1]  # Assumes last word is the unit
 
         return f"{spec_format_string}: {self.value}{unit}"
 
@@ -46,6 +47,7 @@ def create_component_class(class_name, polymorphic_id, spec_format_string):
 
     new_class = type(class_name, (Component,), class_attributes)
     return new_class
+
 
 Resistor = create_component_class(
     class_name="Resistor",

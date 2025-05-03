@@ -1,13 +1,14 @@
 import pytest
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from PyQt5.QtWidgets import QApplication, QCheckBox, QWidget, QHBoxLayout
+from PyQt5.QtWidgets import QCheckBox
 from PyQt5.QtCore import QUrl, Qt
 
 from frontend.ui.main_window import InventoryUI
 from frontend.ui import utils as ui_utils
 from backend import component_constants
+
 
 class MockComponent:
     def __init__(self, id, part_number, component_type, value, quantity, purchase_link=None, datasheet_link=None):
@@ -19,11 +20,13 @@ class MockComponent:
         self.purchase_link = purchase_link
         self.datasheet_link = datasheet_link
 
+
 MOCK_COMPONENTS = [
     MockComponent(uuid.uuid4(), "R101", "resistor", "10k Ohms", 50, "http://buy.res", "http://data.res"),
     MockComponent(uuid.uuid4(), "C202", "capacitor", "10uF", 25, None, "http://data.cap"),
     MockComponent(uuid.uuid4(), "U303", "ic", "OpAmp", 10),
 ]
+
 
 @pytest.fixture
 def window(qtbot):
@@ -32,7 +35,8 @@ def window(qtbot):
         qtbot.addWidget(test_window)
         yield test_window
 
-def test_window_initialization(window, qtbot):
+
+def test_window_initialization(window):
     assert window.windowTitle() == "Electronics Inventory Manager"
     assert window.table is not None
     assert window.add_button is not None
@@ -43,7 +47,8 @@ def test_window_initialization(window, qtbot):
     assert not window.remove_button.isEnabled()
     assert not window.generate_ideas_button.isEnabled()
 
-def test_display_data_populates_table(window, qtbot):
+
+def test_display_data_populates_table(window):
     window.display_data(MOCK_COMPONENTS)
     assert window.table.rowCount() == len(MOCK_COMPONENTS)
     assert window.table.item(0, window.PART_NUMBER_COL).text() == "R101"
@@ -59,9 +64,11 @@ def test_display_data_populates_table(window, qtbot):
     assert window.table.item(2, window.DATASHEET_COL).text() == ""
     assert window.table.cellWidget(2, window.CHECKBOX_COL) is not None
 
-def test_display_data_empty(window, qtbot):
+
+def test_display_data_empty(window):
     window.display_data([])
     assert window.table.rowCount() == 0
+
 
 def test_button_signals_simple(window, qtbot):
     with qtbot.waitSignal(window.add_component_requested, timeout=500) as blocker:
@@ -74,7 +81,8 @@ def test_button_signals_simple(window, qtbot):
         qtbot.mouseClick(window.import_button, Qt.LeftButton)
     assert blocker.signal_triggered
 
-def test_checkbox_enables_buttons(window, qtbot):
+
+def test_checkbox_enables_buttons(window):
     window.display_data(MOCK_COMPONENTS)
     assert not window.remove_button.isEnabled()
     assert not window.generate_ideas_button.isEnabled()
@@ -90,7 +98,8 @@ def test_checkbox_enables_buttons(window, qtbot):
     assert not window.remove_button.isEnabled()
     assert not window.generate_ideas_button.isEnabled()
 
-def test_get_checked_ids(window, qtbot):
+
+def test_get_checked_ids(window):
     window.display_data(MOCK_COMPONENTS)
     checkbox0_widget = window.table.cellWidget(0, window.CHECKBOX_COL)
     checkbox0 = checkbox0_widget.findChild(QCheckBox)
@@ -104,11 +113,13 @@ def test_get_checked_ids(window, qtbot):
     assert MOCK_COMPONENTS[2].id in checked_ids
     assert MOCK_COMPONENTS[1].id not in checked_ids
 
-def test_get_checked_ids_empty(window, qtbot):
+
+def test_get_checked_ids_empty(window):
     window.display_data([])
     assert window.get_checked_ids() == []
     window.display_data(MOCK_COMPONENTS)
     assert window.get_checked_ids() == []
+
 
 def test_remove_button_signal_with_checked(window, qtbot):
     window.display_data(MOCK_COMPONENTS)
@@ -126,6 +137,7 @@ def test_remove_button_signal_with_checked(window, qtbot):
     assert blocker.signal_triggered
     assert blocker.args == [[MOCK_COMPONENTS[0].id]]
 
+
 def test_generate_ideas_button_signal_with_checked(window, qtbot):
     window.display_data(MOCK_COMPONENTS)
     checkbox1_widget = window.table.cellWidget(1, window.CHECKBOX_COL)
@@ -142,10 +154,9 @@ def test_generate_ideas_button_signal_with_checked(window, qtbot):
     assert blocker.signal_triggered
     assert blocker.args == [[MOCK_COMPONENTS[1].id]]
 
+
 def test_handle_cell_click_links(window, qtbot):
     window.display_data(MOCK_COMPONENTS)
-    purchase_link_item = window.table.item(0, window.PURCHASE_LINK_COL)
-    datasheet_link_item = window.table.item(0, window.DATASHEET_COL)
     with qtbot.waitSignal(window.link_clicked, timeout=500) as blocker:
         window._handle_cell_click(0, window.PURCHASE_LINK_COL)
     assert blocker.signal_triggered
@@ -154,6 +165,7 @@ def test_handle_cell_click_links(window, qtbot):
         window._handle_cell_click(0, window.DATASHEET_COL)
     assert blocker.signal_triggered
     assert blocker.args == [QUrl(MOCK_COMPONENTS[0].datasheet_link)]
+
 
 def test_handle_cell_click_no_link(window, qtbot):
     window.display_data(MOCK_COMPONENTS)

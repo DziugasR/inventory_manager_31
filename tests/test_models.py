@@ -2,13 +2,14 @@ import unittest
 import uuid
 
 from backend.models import (
-    Component, Base, create_component_class,
+    Component, create_component_class,
     Resistor, Capacitor, Inductor, Diode, Transistor, LED, Relay,
     OpAmp, VoltageRegulator, Microcontroller, IC, MOSFET,
     Photodiode, Switch, Transformer, Speaker, Motor, HeatSink,
     Connector, CrystalOscillator, Buzzer, Thermistor, Varistor,
     Fuse, Sensor, Antenna, Breadboard, Wire, Battery, PowerSupply
 )
+
 
 def create_basic_kwargs(component_type, value, part_number="TestPN", quantity=1):
     return {
@@ -21,16 +22,17 @@ def create_basic_kwargs(component_type, value, part_number="TestPN", quantity=1)
         "datasheet_link": None,
     }
 
+
 class TestModels(unittest.TestCase):
 
     def test_create_component_class_structure(self):
-        TestClass = create_component_class("TestComponent", "test_id", "Test Spec")
-        self.assertTrue(isinstance(TestClass, type))
-        self.assertTrue(issubclass(TestClass, Component))
-        self.assertEqual(TestClass.__name__, "TestComponent")
-        self.assertIn("__mapper_args__", TestClass.__dict__)
-        self.assertEqual(TestClass.__mapper_args__["polymorphic_identity"], "test_id")
-        self.assertTrue(hasattr(TestClass, "get_specifications"))
+        test_class = create_component_class("TestComponent", "test_id", "Test Spec")
+        self.assertTrue(isinstance(test_class, type))
+        self.assertTrue(issubclass(test_class, Component))
+        self.assertEqual(test_class.__name__, "TestComponent")
+        self.assertIn("__mapper_args__", test_class.__dict__)
+        self.assertEqual(test_class.__mapper_args__["polymorphic_identity"], "test_id")
+        self.assertTrue(hasattr(test_class, "get_specifications"))
 
     def test_component_instantiation(self):
         r_kwargs = create_basic_kwargs("resistor", "1k", "R1")
@@ -135,14 +137,14 @@ class TestModels(unittest.TestCase):
                 self.assertIn(val, spec)
 
     def test_get_specifications_edge_cases(self):
-        TestClass1 = create_component_class("TestNoSpace", "tn", "TestSpec")
+        test_class_1 = create_component_class("TestNoSpace", "tn", "TestSpec")
         kwargs1 = create_basic_kwargs("tn", "Value1")
-        inst1 = TestClass1(**kwargs1)
+        inst1 = test_class_1(**kwargs1)
         self.assertEqual(inst1.get_specifications(), "TestSpec: Value1")
 
-        TestClass2 = create_component_class("TestEndSpace", "ts", "Test Spec ")
+        test_class_2 = create_component_class("TestEndSpace", "ts", "Test Spec ")
         kwargs2 = create_basic_kwargs("ts", "Value2")
-        inst2 = TestClass2(**kwargs2)
+        inst2 = test_class_2(**kwargs2)
         spec2 = inst2.get_specifications()
         self.assertTrue(spec2.startswith("Test Spec "))
         self.assertIn(": Value2", spec2)

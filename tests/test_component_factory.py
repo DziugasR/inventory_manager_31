@@ -1,18 +1,12 @@
 import unittest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from unittest.mock import patch
-import sys
+from sqlalchemy.exc import SQLAlchemyError
 
-from backend.models import (
-    Base, Component, Resistor, Capacitor, Inductor, Diode, Transistor, LED, Relay,
-    OpAmp, VoltageRegulator, Microcontroller, IC, MOSFET,
-    Photodiode, Switch, Transformer, Speaker, Motor, HeatSink,
-    Connector, CrystalOscillator, Buzzer, Thermistor, Varistor,
-    Fuse, Sensor, Antenna, Breadboard, Wire, Battery, PowerSupply
-)
-
+from backend.models import Base, Component
 from backend.component_factory import ComponentFactory
+
+from backend.models import create_component_class
 
 
 class TestComponentFactory(unittest.TestCase):
@@ -63,7 +57,7 @@ class TestComponentFactory(unittest.TestCase):
                 self.assertIsNotNone(specs)
                 self.assertIn(retrieved.value, specs)
 
-            except Exception as e:
+            except (AttributeError, ValueError, TypeError, SQLAlchemyError, KeyError):
                 failed_types.append(component_type)
                 self.session.rollback()
 
@@ -76,15 +70,13 @@ class TestComponentFactory(unittest.TestCase):
                                               quantity=1)
 
     def test_register_new_component_type(self):
-        from backend.models import create_component_class
-
-        TestComp = create_component_class(
+        test_comp = create_component_class(
             class_name="TestComp",
             polymorphic_id="test_comp",
             spec_format_string="Test Value X"
         )
 
-        ComponentFactory.register_component("test_comp", TestComp)
+        ComponentFactory.register_component("test_comp", test_comp)
 
         test_data = {
             "part_number": "TEST-CUSTOM",
@@ -96,7 +88,7 @@ class TestComponentFactory(unittest.TestCase):
         self.session.commit()
         retrieved = self.session.query(Component).filter_by(part_number="TEST-CUSTOM").first()
         self.assertIsNotNone(retrieved)
-        self.assertIsInstance(retrieved, TestComp)
+        self.assertIsInstance(retrieved, test_comp)
         self.assertEqual(retrieved.component_type, "test_comp")
         self.assertEqual(retrieved.value, "42")
 

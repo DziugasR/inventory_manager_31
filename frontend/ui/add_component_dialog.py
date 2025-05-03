@@ -7,6 +7,7 @@ from PyQt5.QtCore import pyqtSignal
 from backend.component_constants import UI_TYPE_NAMES, UI_TO_BACKEND_TYPE_MAP
 from backend.exceptions import InvalidInputError
 
+
 class AddComponentDialog(QDialog):
     component_data_collected = pyqtSignal(dict)
 
@@ -104,7 +105,7 @@ class AddComponentDialog(QDialog):
                 quantity_row_index = i
                 break
 
-        insert_position = quantity_row_index if quantity_row_index != -1 else self.form_layout.rowCount() - 2 # Before links
+        insert_position = quantity_row_index if quantity_row_index != -1 else self.form_layout.rowCount() - 2
 
         for field_name in reversed(fields):
             label = QLabel(field_name)
@@ -125,8 +126,9 @@ class AddComponentDialog(QDialog):
         for field_name, (_, input_field) in self.dynamic_fields.items():
             value = input_field.text().strip()
             if field_name == primary_value_field_name and not value:
-                 QMessageBox.warning(self, "Input Error", f"Primary value '{field_name}' is required for {selected_type}.")
-                 return False
+                QMessageBox.warning(self, "Input Error",
+                                    f"Primary value '{field_name}' is required for {selected_type}.")
+                return False
 
         return True
 
@@ -135,7 +137,8 @@ class AddComponentDialog(QDialog):
         backend_type_id = UI_TO_BACKEND_TYPE_MAP.get(selected_ui_type)
 
         if backend_type_id is None:
-            QMessageBox.critical(self, "Internal Error", f"Could not map component type '{selected_ui_type}' to a backend identifier.")
+            QMessageBox.critical(self, "Internal Error",
+                                 f"Could not map component type '{selected_ui_type}' to a backend identifier.")
             raise InvalidInputError(f"Internal error mapping type: {selected_ui_type}")
 
         dynamic_values = []
@@ -162,7 +165,7 @@ class AddComponentDialog(QDialog):
                 self.component_data_collected.emit(component_data)
                 self.accept()
             except InvalidInputError as e:
-                 print(f"Error collecting component data: {e}")
+                print(f"Error collecting component data: {e}")
             except Exception as e:
-                 QMessageBox.critical(self, "Error", f"An unexpected error occurred while gathering data: {e}")
-                 print(f"Unexpected error in handle_accept: {e}")
+                QMessageBox.critical(self, "Error", f"An unexpected error occurred while gathering data: {e}")
+                print(f"Unexpected error in handle_accept: {e}")

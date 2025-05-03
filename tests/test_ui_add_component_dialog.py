@@ -8,11 +8,13 @@ from frontend.ui.add_component_dialog import AddComponentDialog
 from backend.component_constants import UI_TYPE_NAMES, UI_TO_BACKEND_TYPE_MAP
 from backend.exceptions import InvalidInputError
 
+
 @pytest.fixture
 def dialog(qtbot):
     test_dialog = AddComponentDialog()
     qtbot.addWidget(test_dialog)
     yield test_dialog
+
 
 def test_dialog_initialization(dialog, qtbot):
     assert dialog.windowTitle() == "Add New Component"
@@ -30,6 +32,7 @@ def test_dialog_initialization(dialog, qtbot):
     assert len(dialog.dynamic_fields) == len(expected_fields)
     if expected_fields:
         assert all(field in dialog.dynamic_fields for field in expected_fields)
+
 
 def test_dynamic_fields_update_on_type_change(dialog, qtbot):
     initial_type = UI_TYPE_NAMES[0]
@@ -58,11 +61,13 @@ def test_dynamic_fields_update_on_type_change(dialog, qtbot):
     assert "Voltage (V)" in dialog.dynamic_fields
     assert "Resistance (Ω)" not in dialog.dynamic_fields
 
+
 @patch('PyQt5.QtWidgets.QMessageBox.warning')
 def test_validation_part_number_required(mock_warning, dialog, qtbot):
     dialog.part_number_input.setText("")
     assert not dialog.validate_inputs()
     mock_warning.assert_called_once_with(dialog, "Input Error", "Part number is required.")
+
 
 @patch('PyQt5.QtWidgets.QMessageBox.warning')
 def test_validation_primary_value_required_resistor(mock_warning, dialog, qtbot):
@@ -72,7 +77,9 @@ def test_validation_primary_value_required_resistor(mock_warning, dialog, qtbot)
     resistance_label, resistance_input = dialog.dynamic_fields["Resistance (Ω)"]
     resistance_input.setText("")
     assert not dialog.validate_inputs()
-    mock_warning.assert_called_once_with(dialog, "Input Error", "Primary value 'Resistance (Ω)' is required for Resistor.")
+    mock_warning.assert_called_once_with(dialog, "Input Error",
+                                         "Primary value 'Resistance (Ω)' is required for Resistor.")
+
 
 @patch('PyQt5.QtWidgets.QMessageBox.warning')
 def test_validation_primary_value_required_capacitor(mock_warning, dialog, qtbot):
@@ -82,7 +89,9 @@ def test_validation_primary_value_required_capacitor(mock_warning, dialog, qtbot
     capacitance_label, capacitance_input = dialog.dynamic_fields["Capacitance (µF)"]
     capacitance_input.setText("")
     assert not dialog.validate_inputs()
-    mock_warning.assert_called_once_with(dialog, "Input Error", "Primary value 'Capacitance (µF)' is required for Capacitor.")
+    mock_warning.assert_called_once_with(dialog, "Input Error",
+                                         "Primary value 'Capacitance (µF)' is required for Capacitor.")
+
 
 @patch('PyQt5.QtWidgets.QMessageBox.warning')
 def test_validation_passes_with_required_fields(mock_warning, dialog, qtbot):
@@ -95,6 +104,7 @@ def test_validation_passes_with_required_fields(mock_warning, dialog, qtbot):
     tolerance_input.setText("5%")
     assert dialog.validate_inputs()
     mock_warning.assert_not_called()
+
 
 def test_get_component_data_correct_resistor(dialog, qtbot):
     dialog.type_input.setCurrentText("Resistor")
@@ -119,6 +129,7 @@ def test_get_component_data_correct_resistor(dialog, qtbot):
     if "Resistance (Ω): 4.7k" in data['value'] and "Tolerance (%): 1%" in data['value']:
         assert ", " in data['value']
 
+
 def test_get_component_data_correct_capacitor_no_secondary(dialog, qtbot):
     dialog.type_input.setCurrentText("Capacitor")
     qtbot.wait(20)
@@ -135,6 +146,7 @@ def test_get_component_data_correct_capacitor_no_secondary(dialog, qtbot):
     assert data['value'] == 'Capacitance (µF): 100nF'
     assert data['quantity'] == 50
 
+
 @patch.object(AddComponentDialog, 'validate_inputs', return_value=True)
 @patch.object(AddComponentDialog, 'get_component_data')
 @patch.object(AddComponentDialog, 'accept')
@@ -150,6 +162,7 @@ def test_handle_accept_success(mock_accept, mock_get_data, mock_validate, dialog
     mock_get_data.assert_called_once()
     mock_accept.assert_called_once()
 
+
 @patch.object(AddComponentDialog, 'validate_inputs', return_value=False)
 @patch.object(AddComponentDialog, 'get_component_data')
 @patch.object(AddComponentDialog, 'accept')
@@ -162,6 +175,7 @@ def test_handle_accept_validation_fail(mock_warning, mock_accept, mock_get_data,
     mock_validate.assert_called_once()
     mock_get_data.assert_not_called()
     mock_accept.assert_not_called()
+
 
 def test_reject_button(dialog, qtbot):
     cancel_button = dialog.button_box.button(QDialogButtonBox.Cancel)

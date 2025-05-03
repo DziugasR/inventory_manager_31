@@ -16,6 +16,7 @@ from backend.exceptions import (
     DuplicateComponentError, InvalidInputError
 )
 
+
 class MainController(QObject):
     def __init__(self, view: InventoryUI, openai_model: str):
         super().__init__()
@@ -44,7 +45,7 @@ class MainController(QObject):
         except DatabaseError as e:
             self._show_message("Database Error", f"Failed to load inventory: {e}", level="critical")
         except Exception as e:
-             self._show_message("Error", f"An unexpected error occurred while loading data: {e}", level="critical")
+            self._show_message("Error", f"An unexpected error occurred while loading data: {e}", level="critical")
 
     def open_add_component_dialog(self):
         dialog = AddComponentDialog(self._view)
@@ -55,7 +56,7 @@ class MainController(QObject):
         try:
             required_keys = ['part_number', 'component_type', 'value', 'quantity']
             if not all(key in component_data for key in required_keys):
-                 raise InvalidInputError("Missing required component data from dialog.")
+                raise InvalidInputError("Missing required component data from dialog.")
 
             add_component(
                 part_number=component_data['part_number'],
@@ -65,17 +66,18 @@ class MainController(QObject):
                 purchase_link=component_data.get('purchase_link'),
                 datasheet_link=component_data.get('datasheet_link')
             )
-            self._show_message("Success", f"Component '{component_data['part_number']}' added successfully.", level="info")
+            self._show_message("Success", f"Component '{component_data['part_number']}' added successfully.",
+                               level="info")
             self.load_inventory_data()
 
         except DuplicateComponentError as e:
             self._show_message("Duplicate Component", str(e), level="warning")
         except InvalidQuantityError as e:
-             self._show_message("Invalid Quantity", str(e), level="warning")
+            self._show_message("Invalid Quantity", str(e), level="warning")
         except DatabaseError as e:
             self._show_message("Database Error", f"Failed to add component: {e}", level="critical")
         except InvalidInputError as e:
-             self._show_message("Invalid Input", f"Failed to add component: {e}", level="warning")
+            self._show_message("Invalid Input", f"Failed to add component: {e}", level="warning")
         except Exception as e:
             self._show_message("Unexpected Error", f"An unexpected error occurred while adding: {e}", level="critical")
 
@@ -100,16 +102,12 @@ class MainController(QObject):
             return
 
         for component_id in component_ids:
-            component = None
-            part_number_display = f"ID: {component_id}"
-            current_quantity = 0
-
             try:
                 component = get_component_by_id(component_id)
                 if not component:
-                     messages.append(f"- ID {component_id}: Not found in database (might be removed already?).")
-                     failure_count += 1
-                     continue
+                    messages.append(f"- ID {component_id}: Not found in database (might be removed already?).")
+                    failure_count += 1
+                    continue
                 current_quantity = component.quantity
                 part_number_display = component.part_number
 
@@ -135,25 +133,28 @@ class MainController(QObject):
             )
 
             if not ok:
-                 messages.append(f"- {part_number_display}: Removal cancelled by user.")
-                 failure_count += 1
-                 continue
+                messages.append(f"- {part_number_display}: Removal cancelled by user.")
+                failure_count += 1
+                continue
 
             if quantity_to_remove <= 0:
-                 messages.append(f"- {part_number_display}: Invalid quantity ({quantity_to_remove}) entered.")
-                 failure_count += 1
-                 continue
+                messages.append(f"- {part_number_display}: Invalid quantity ({quantity_to_remove}) entered.")
+                failure_count += 1
+                continue
 
             try:
                 remove_component_quantity(component_id, quantity_to_remove)
-                messages.append(f"- {part_number_display}: Removed {quantity_to_remove} units (remaining: {current_quantity - quantity_to_remove}).")
+                messages.append(
+                    f"- {part_number_display}: Removed {quantity_to_remove} units "
+                    f"(remaining: {current_quantity - quantity_to_remove})."
+                )
                 success_count += 1
             except (InvalidQuantityError, ComponentNotFoundError, StockError, DatabaseError) as e:
                 messages.append(f"- {part_number_display}: Removal error - {e}")
                 failure_count += 1
             except Exception as e:
-                 messages.append(f"- {part_number_display}: Unexpected removal error - {e}")
-                 failure_count += 1
+                messages.append(f"- {part_number_display}: Unexpected removal error - {e}")
+                failure_count += 1
 
         summary_title = "Removal Summary"
         summary_message = f"Processed {len(component_ids)} component(s):\n"
@@ -185,14 +186,15 @@ class MainController(QObject):
             except DatabaseError as e:
                 errors.append(f"Database error fetching ID {cid}: {e}")
             except Exception as e:
-                 errors.append(f"Unexpected error fetching ID {cid}: {e}")
+                errors.append(f"Unexpected error fetching ID {cid}: {e}")
 
         if errors:
             error_message = "Could not fetch details for all selected components:\n" + "\n".join(errors)
             self._show_message("Data Fetch Warning", error_message, level="warning")
 
         if not selected_components:
-            self._show_message("Generate Ideas", "Could not retrieve details for any selected components.", level="warning")
+            self._show_message("Generate Ideas", "Could not retrieve details for any selected components.",
+                               level="warning")
             return
 
         idea_controller = GenerateIdeasController(selected_components, self._openai_model, self._view)

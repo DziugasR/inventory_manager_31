@@ -9,7 +9,7 @@ from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
 from .utils import load_stylesheet
 from backend.component_constants import BACKEND_TO_UI_TYPE_MAP
-from pathlib import Path
+
 
 class InventoryUI(QMainWindow):
     add_component_requested = pyqtSignal()
@@ -190,7 +190,8 @@ class InventoryUI(QMainWindow):
         if selected_row < 0:
             return None
 
-        headers = [self.table.horizontalHeaderItem(i).text() for i in range(self.table.columnCount() - 1)] # Exclude checkbox col header
+        headers = [self.table.horizontalHeaderItem(i).text() for i in
+                   range(self.table.columnCount() - 1)]  # Exclude checkbox col header
         data = {}
         component_id = self._row_id_map.get(selected_row)
         if component_id:
@@ -200,9 +201,9 @@ class InventoryUI(QMainWindow):
             item = self.table.item(selected_row, col)
             data[header] = item.text() if item else ""
             if col in [self.PURCHASE_LINK_COL, self.DATASHEET_COL] and item:
-                 link_data = item.data(Qt.UserRole)
-                 if isinstance(link_data, QUrl):
-                     data[header + "_url"] = link_data.toString()
+                link_data = item.data(Qt.UserRole)
+                if isinstance(link_data, QUrl):
+                    data[header + "_url"] = link_data.toString()
         return data
 
     def display_data(self, components: list):

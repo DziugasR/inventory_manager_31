@@ -1,13 +1,12 @@
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QWidget,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
-    QPushButton, QSpinBox, QTextEdit, QStyle, QToolTip,
+    QPushButton, QSpinBox, QTextEdit
 )
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from functools import partial
 
-from pathlib import Path
 from .utils import load_stylesheet
 
 
@@ -114,20 +113,21 @@ class GenerateIdeasDialog(QDialog):
             self.components_table.setCellWidget(row, self.QUANTITY_COL_IDX, spinbox)
             self._spinboxes[part_number] = spinbox
 
-            row_tooltip = f"Part: {part_number}\nType: {ui_type}\nValue: {value or 'N/A'}\nAvailable: {available_quantity}"
-            for col in range(self.components_table.columnCount()):
-                 item = self.components_table.item(row, col)
-                 if item:
-                     item.setToolTip(row_tooltip)
-                 widget = self.components_table.cellWidget(row, col)
-                 if widget:
-                    widget.setToolTip(row_tooltip + f"\n\nCurrent project quantity: {spinbox.value()}")
+            row_tooltip = \
+                f"Part: {part_number}\nType: {ui_type}\nValue: {value or 'N/A'}\nAvailable: {available_quantity}"
 
+            for col in range(self.components_table.columnCount()):
+                item = self.components_table.item(row, col)
+                if item:
+                    item.setToolTip(row_tooltip)
+                widget = self.components_table.cellWidget(row, col)
+                if widget:
+                    widget.setToolTip(row_tooltip + f"\n\nCurrent project quantity: {spinbox.value()}")
 
     def get_spinbox_values(self):
         values = {}
         for pn, spinbox in self._spinboxes.items():
-             values[pn] = spinbox.value()
+            values[pn] = spinbox.value()
         return values
 
     def set_response_text(self, text):
@@ -144,7 +144,7 @@ class GenerateIdeasDialog(QDialog):
             self.response_display.clear()
         else:
             if not self.response_display.toPlainText():
-                 self.response_display.setPlaceholderText("Click 'Generate Ideas' to get suggestions...")
+                self.response_display.setPlaceholderText("Click 'Generate Ideas' to get suggestions...")
 
     def _handle_internal_spinbox_change(self, part_number, new_value):
         self.quantity_changed.emit(part_number, new_value)

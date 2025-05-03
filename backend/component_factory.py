@@ -6,6 +6,7 @@ from backend.models import (
     Fuse, Sensor, Antenna, Breadboard, Wire, Battery, PowerSupply
 )
 
+
 class ComponentFactory:
     _component_types = {
         "resistor": Resistor,

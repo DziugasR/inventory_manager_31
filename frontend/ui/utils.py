@@ -2,6 +2,7 @@ import sys
 import os
 from pathlib import Path
 
+
 def load_stylesheet(filename="styles/button_styles.qss") -> str:
     style_path = None
     try:
@@ -20,7 +21,6 @@ def load_stylesheet(filename="styles/button_styles.qss") -> str:
                     style_path = style_path_alt
                 else:
                     style_path = script_dir / filename
-
 
         if style_path is None or not style_path.is_file():
             print(f"Warning: Stylesheet file not found at calculated path: {style_path}")

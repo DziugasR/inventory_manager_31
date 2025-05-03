@@ -1,12 +1,12 @@
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
-from functools import partial
-from typing import List, Dict, Optional
+from typing import List
 
 from frontend.ui.generate_ideas_dialog import GenerateIdeasDialog
 from backend.ChatGPT import ChatGPTService
 from backend.generate_ideas_backend import construct_generation_prompt
 from backend.component_constants import BACKEND_TO_UI_TYPE_MAP
 from backend.models import Component
+
 
 class ChatGPTWorker(QObject):
     finished = pyqtSignal(str)
@@ -18,10 +18,10 @@ class ChatGPTWorker(QObject):
 
     def run(self):
         if self.chatgpt_service:
-             result = self.chatgpt_service.get_project_ideas(self.prompt)
-             self.finished.emit(result)
+            result = self.chatgpt_service.get_project_ideas(self.prompt)
+            self.finished.emit(result)
         else:
-             self.finished.emit("Error: ChatGPT Service not available.")
+            self.finished.emit("Error: ChatGPT Service not available.")
 
 
 class GenerateIdeasController(QObject):
@@ -39,7 +39,7 @@ class GenerateIdeasController(QObject):
         self._initialize_view(self._backend_to_ui_map)
 
         if not self.chatgpt_service.is_ready():
-             print("Controller Warning: ChatGPT service failed to initialize.")
+            print("Controller Warning: ChatGPT service failed to initialize.")
 
     def _connect_signals(self):
         self.view.quantity_changed.connect(self._handle_quantity_change)
@@ -58,12 +58,12 @@ class GenerateIdeasController(QObject):
         print("\nController: Generate request received.")
 
         if not self.chatgpt_service.is_ready():
-             self.view.set_response_text("ChatGPT is not configured. Check API key.")
-             return
+            self.view.set_response_text("ChatGPT is not configured. Check API key.")
+            return
 
         if self._worker_thread and self._worker_thread.isRunning():
-             print("Controller: Generation already in progress.")
-             return
+            print("Controller: Generation already in progress.")
+            return
 
         current_spinbox_values = self.view.get_spinbox_values()
         print(f"Controller: Current spinbox values from view: {current_spinbox_values}")
@@ -99,11 +99,10 @@ class GenerateIdeasController(QObject):
     def _handle_chatgpt_result(self, result):
         print("Controller: Received result from worker.")
         if self.view:
-             self.view.set_response_text(result)
-             self.view.show_processing(False)
+            self.view.set_response_text(result)
+            self.view.show_processing(False)
         else:
-             print("Controller: View no longer exists, cannot display result.")
-
+            print("Controller: View no longer exists, cannot display result.")
 
     def _on_thread_finished(self):
         print("Controller: Worker thread finished.")
@@ -111,7 +110,7 @@ class GenerateIdeasController(QObject):
         self._worker = None
 
     def cleanup(self):
-         if self._worker_thread and self._worker_thread.isRunning():
-              print("Controller: Requesting worker thread to quit during cleanup...")
-              self._worker_thread.quit()
-              self._worker_thread.wait(1000)
+        if self._worker_thread and self._worker_thread.isRunning():
+            print("Controller: Requesting worker thread to quit during cleanup...")
+            self._worker_thread.quit()
+            self._worker_thread.wait(1000)

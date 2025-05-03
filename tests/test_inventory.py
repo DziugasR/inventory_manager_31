@@ -6,12 +6,22 @@ from backend import inventory
 from backend.models import Component
 from backend.exceptions import (
     InvalidInputError, InvalidQuantityError, ComponentNotFoundError, StockError,
-    DatabaseError, ComponentError
+    DatabaseError
 )
 
 
 class MockComponent(MagicMock):
-    def __init__(self, id=None, part_number="PN123", component_type="Resistor", value="10k", quantity=100, purchase_link=None, datasheet_link=None, **kwargs):
+    def __init__(
+            self,
+            id=None,
+            part_number="PN123",
+            component_type="Resistor",
+            value="10k",
+            quantity=100,
+            purchase_link=None,
+            datasheet_link=None,
+            **kwargs
+    ):
         super().__init__(**kwargs)
         self.id = id if id else uuid.uuid4()
         self.part_number = part_number
@@ -41,7 +51,8 @@ class TestInventory(unittest.TestCase):
     def test_add_component_success(self, mock_factory, mock_get_session):
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
-        mock_component_instance = MockComponent(part_number="TEST-PN", component_type="Capacitor", value="10uF", quantity=50)
+        mock_component_instance = MockComponent(part_number="TEST-PN", component_type="Capacitor", value="10uF",
+                                                quantity=50)
         mock_factory.create_component.return_value = mock_component_instance
 
         result = inventory.add_component("TEST-PN", "Capacitor", "10uF", 50, "link1", "link2")
@@ -55,15 +66,13 @@ class TestInventory(unittest.TestCase):
         self.assertEqual(result, mock_component_instance)
 
     @patch('backend.inventory.get_session')
-    @patch('backend.inventory.ComponentFactory')
-    def test_add_component_invalid_part_number(self, mock_factory, mock_get_session):
+    def test_add_component_invalid_part_number(self, mock_get_session):
         with self.assertRaisesRegex(InvalidInputError, "Part number cannot be empty."):
             inventory.add_component("", "Resistor", "1k", 100, None, None)
         mock_get_session.assert_not_called()
 
     @patch('backend.inventory.get_session')
-    @patch('backend.inventory.ComponentFactory')
-    def test_add_component_invalid_quantity(self, mock_factory, mock_get_session):
+    def test_add_component_invalid_quantity(self, mock_get_session):
         with self.assertRaisesRegex(InvalidQuantityError, "Quantity cannot be negative."):
             inventory.add_component("PN999", "Resistor", "1k", -1, None, None)
         mock_get_session.assert_not_called()
@@ -76,7 +85,7 @@ class TestInventory(unittest.TestCase):
         mock_factory.create_component.side_effect = ValueError("Invalid component type")
 
         with self.assertRaisesRegex(ValueError, "Invalid component type"):
-             inventory.add_component("PN-ERR", "InvalidType", "N/A", 10, None, None)
+            inventory.add_component("PN-ERR", "InvalidType", "N/A", 10, None, None)
 
         mock_session.add.assert_not_called()
         mock_session.commit.assert_not_called()
@@ -222,7 +231,8 @@ class TestInventory(unittest.TestCase):
         mock_session.query.return_value.filter_by.return_value.first.return_value = component_to_delete
         mock_session.commit.side_effect = Exception("Simulated DB error on commit during delete")
 
-        with self.assertRaisesRegex(DatabaseError, "Error while removing component: Simulated DB error on commit during delete"):
+        with self.assertRaisesRegex(DatabaseError,
+                                    "Error while removing component: Simulated DB error on commit during delete"):
             inventory.remove_component_quantity(self.comp2_id, 10)
 
         self.assertEqual(component_to_delete.quantity, 0)
@@ -358,7 +368,8 @@ class TestInventory(unittest.TestCase):
         mock_session.query.return_value.filter_by.return_value.first.return_value = component_to_update
         mock_session.commit.side_effect = Exception("Simulated DB error on commit")
 
-        with self.assertRaisesRegex(DatabaseError, "Error while updating component quantity: Simulated DB error on commit"):
+        with self.assertRaisesRegex(DatabaseError,
+                                    "Error while updating component quantity: Simulated DB error on commit"):
             inventory.update_component_quantity(self.comp1_id, 100)
 
         self.assertEqual(component_to_update.quantity, 100)
@@ -452,7 +463,10 @@ class TestInventory(unittest.TestCase):
         part_number_to_find = "PN-ERR"
         mock_session.query.return_value.filter_by.return_value.all.side_effect = Exception("DB Part Number Error")
 
-        with self.assertRaisesRegex(DatabaseError, f"Error fetching components by part number {part_number_to_find}: DB Part Number Error"):
+        with self.assertRaisesRegex(
+            DatabaseError,
+            f"Error fetching components by part number {part_number_to_find}: DB Part Number Error"
+        ):
             inventory.get_components_by_part_number(part_number_to_find)
 
         mock_session.close.assert_called_once()

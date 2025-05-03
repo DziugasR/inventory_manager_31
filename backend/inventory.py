@@ -6,12 +6,19 @@ from backend.component_factory import ComponentFactory
 
 import backend.exceptions
 
-def add_component(part_number: str, component_type: str, value: str, quantity: int,
-                   purchase_link: str | None, datasheet_link: str | None) -> Component | None:
+
+def add_component(
+        part_number: str,
+        component_type: str,
+        value: str,
+        quantity: int,
+        purchase_link: str | None,
+        datasheet_link: str | None
+) -> Component | None:
     if not part_number:
         raise backend.exceptions.InvalidInputError("Part number cannot be empty.")
     if quantity < 0:
-         raise backend.exceptions.InvalidQuantityError("Quantity cannot be negative.")
+        raise backend.exceptions.InvalidQuantityError("Quantity cannot be negative.")
 
     session = get_session()
     try:
@@ -29,7 +36,7 @@ def add_component(part_number: str, component_type: str, value: str, quantity: i
     except Exception as e:
         session.rollback()
         if isinstance(e, (backend.exceptions.ComponentError, ValueError)):
-             raise
+            raise
         raise backend.exceptions.DatabaseError(f"Database error during add: {e}") from e
     finally:
         session.close()
@@ -46,8 +53,9 @@ def remove_component_quantity(component_id: uuid.UUID, quantity: int) -> Compone
             raise backend.exceptions.ComponentNotFoundError(f"Component with id {component_id} not found")
 
         if component.quantity < quantity:
-            raise backend.exceptions.StockError(f"Not enough stock for component {component.part_number} (ID: {component_id}). "
-                             f"Available: {component.quantity}, Tried to remove: {quantity}")
+            raise backend.exceptions.StockError(
+                f"Not enough stock for component {component.part_number} (ID: {component_id}). "
+                f"Available: {component.quantity}, Tried to remove: {quantity}")
 
         component.quantity -= quantity
         updated_component = component
@@ -116,9 +124,9 @@ def select_multiple_components(component_ids: list[uuid.UUID]) -> list[Component
 
     session = get_session()
     try:
-        selected_components = session.query(Component)\
-                                     .filter(Component.id.in_(component_ids))\
-                                     .all()
+        selected_components = session.query(Component) \
+            .filter(Component.id.in_(component_ids)) \
+            .all()
         return selected_components
     except Exception as e:
         raise backend.exceptions.DatabaseError(f"Error selecting multiple components: {e}") from e

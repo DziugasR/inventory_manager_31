@@ -1,13 +1,12 @@
 import sys
 import unittest
-from unittest.mock import MagicMock
-from functools import partial
 
-from PyQt5.QtWidgets import QApplication, QTableWidgetItem, QSpinBox
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtWidgets import QApplication, QSpinBox
+from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest, QSignalSpy
 
 from frontend.ui.generate_ideas_dialog import GenerateIdeasDialog
+
 
 class MockComponent:
     def __init__(self, part_number, component_type, value, quantity):
@@ -16,7 +15,9 @@ class MockComponent:
         self.value = value
         self.quantity = quantity
 
+
 app = QApplication(sys.argv)
+
 
 class TestGenerateIdeasDialog(unittest.TestCase):
 
@@ -101,7 +102,7 @@ class TestGenerateIdeasDialog(unittest.TestCase):
                 item = self.dialog.components_table.item(row, col)
                 widget = self.dialog.components_table.cellWidget(row, col)
                 if item:
-                     self.assertEqual(item.toolTip(), expected_tooltip_base)
+                    self.assertEqual(item.toolTip(), expected_tooltip_base)
                 if widget:
                     self.assertTrue(widget.toolTip().startswith(expected_tooltip_base))
 
@@ -215,6 +216,7 @@ class TestGenerateIdeasDialog(unittest.TestCase):
 
         self.assertTrue(updated_tooltip.startswith(f"Part: {part_number_to_test}\nType: {self.type_mapping['LED']}"))
         self.assertIn(f"Available: {self.mock_components[row_to_test].quantity}", updated_tooltip)
+
 
 if __name__ == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

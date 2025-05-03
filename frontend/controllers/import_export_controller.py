@@ -1,10 +1,10 @@
-import uuid
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from PyQt5.QtCore import QObject
 
 from frontend.ui.main_window import InventoryUI
 from backend.import_export_logic import export_to_excel, import_from_excel
 from backend.exceptions import DatabaseError, InvalidInputError, ComponentError
+
 
 class ImportExportController(QObject):
     def __init__(self, view: InventoryUI, main_controller):
@@ -41,12 +41,12 @@ class ImportExportController(QObject):
                         level="warning"
                     )
             except (DatabaseError, IOError, ComponentError, Exception) as e:
-                 error_type = type(e).__name__
-                 self._main_controller._show_message(
-                     "Export Error",
-                     f"Failed to export inventory ({error_type}):\n{e}",
-                     level="critical"
-                 )
+                error_type = type(e).__name__
+                self._main_controller._show_message(
+                    "Export Error",
+                    f"Failed to export inventory ({error_type}):\n{e}",
+                    level="critical"
+                )
 
     def handle_import_request(self):
         confirm = QMessageBox.question(
@@ -77,21 +77,21 @@ class ImportExportController(QObject):
                         )
                         self._main_controller.load_inventory_data()
                     else:
-                         self._main_controller._show_message(
-                             "Import Failed",
-                             "An unknown error occurred during import.",
-                             level="warning"
-                         )
+                        self._main_controller._show_message(
+                            "Import Failed",
+                            "An unknown error occurred during import.",
+                            level="warning"
+                        )
                 except FileNotFoundError:
-                     self._main_controller._show_message(
-                         "Import Error",
-                         f"File not found:\n{filename}",
-                         level="critical"
-                     )
+                    self._main_controller._show_message(
+                        "Import Error",
+                        f"File not found:\n{filename}",
+                        level="critical"
+                    )
                 except (DatabaseError, InvalidInputError, ValueError, ComponentError, Exception) as e:
-                     error_type = type(e).__name__
-                     self._main_controller._show_message(
-                         "Import Error",
-                         f"Failed to import inventory ({error_type}):\n{e}",
-                         level="critical"
-                     )
+                    error_type = type(e).__name__
+                    self._main_controller._show_message(
+                        "Import Error",
+                        f"Failed to import inventory ({error_type}):\n{e}",
+                        level="critical"
+                    )

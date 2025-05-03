@@ -2,6 +2,7 @@ import unittest
 
 from backend.generate_ideas_backend import construct_generation_prompt
 
+
 class MockComponent:
     def __init__(self, part_number, component_type, value, quantity):
         self.part_number = part_number
@@ -9,12 +10,13 @@ class MockComponent:
         self.value = value
         self.quantity = quantity
 
+
 class TestConstructGenerationPrompt(unittest.TestCase):
 
     def test_prompt_generation_with_selected_components(self):
         comp1 = MockComponent("R101", "resistor", "10k", 10)
         comp2 = MockComponent("C202", "capacitor", "100uF", 5)
-        comp3 = MockComponent("LED3", "led", None, 20) # Component with None value
+        comp3 = MockComponent("LED3", "led", None, 20)  # Component with None value
         comp4 = MockComponent("IC404", "ic", "LM555", 2)
 
         components = [comp1, comp2, comp3, comp4]

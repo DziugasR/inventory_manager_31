@@ -1,5 +1,4 @@
 import pandas as pd
-import uuid
 
 from backend.models import Component
 from backend.database import get_session
@@ -8,10 +7,11 @@ from backend.exceptions import DatabaseError, InvalidInputError, ComponentError
 
 from pandas import ExcelWriter
 from openpyxl.utils import get_column_letter
-from openpyxl.styles import Font, Alignment , PatternFill
+from openpyxl.styles import Font, Alignment, PatternFill
 
 EXCEL_COLUMNS = ["Part Number", "Type", "Value", "Quantity", "Purchase Link", "Datasheet Link"]
 REQUIRED_IMPORT_COLUMNS = ["Part Number", "Type", "Value", "Quantity"]
+
 
 def export_to_excel(filename: str) -> bool | None:
     components_data = []
@@ -37,8 +37,6 @@ def export_to_excel(filename: str) -> bool | None:
     try:
         with ExcelWriter(filename, engine='openpyxl') as writer:
             df.to_excel(writer, sheet_name='Inventory', index=False, header=True)
-
-            workbook = writer.book
             worksheet = writer.sheets['Inventory']
 
             for column_cells in worksheet.columns:
@@ -48,11 +46,10 @@ def export_to_excel(filename: str) -> bool | None:
 
                 for cell in column_cells:
                     try:
-                        if cell.value:
-                            cell_text = str(cell.value)
-                            if len(cell_text) > max_length:
-                                max_length = len(cell_text)
-                    except Exception:
+                        cell_text = str(cell.value)
+                        if cell_text and len(cell_text) > max_length:
+                            max_length = len(cell_text)
+                    except (ValueError, TypeError):
                         pass
 
                 adjusted_width = (max_length + 2) * 1.2
@@ -76,6 +73,7 @@ def export_to_excel(filename: str) -> bool | None:
     except Exception as e:
         raise Exception(f"An unexpected error occurred during Excel export formatting/writing: {e}") from e
 
+
 def import_from_excel(filename: str) -> bool | None:
     try:
         df = pd.read_excel(filename, engine='openpyxl')
@@ -89,7 +87,7 @@ def import_from_excel(filename: str) -> bool | None:
         raise InvalidInputError(f"Import file '{filename}' is missing required columns: {', '.join(missing_cols)}")
 
     components_to_add = []
-    for index, row in df.iterrows():
+    for i, (index, row) in enumerate(df.iterrows()):
         try:
             part_number = str(row["Part Number"]).strip()
             component_type = str(row["Type"]).strip().lower()
@@ -121,13 +119,13 @@ def import_from_excel(filename: str) -> bool | None:
             })
 
         except (KeyError, ValueError, TypeError) as e:
-            raise InvalidInputError(f"Invalid data found in row {index + 2} of '{filename}': {e}") from e
+            raise InvalidInputError(f"Invalid data found in row {i + 2} of '{filename}': {e}") from e
         except Exception as e:
-             raise Exception(f"Unexpected error processing row {index + 2} of '{filename}': {e}") from e
+            raise Exception(f"Unexpected error processing row {i + 2} of '{filename}': {e}") from e
 
     session = get_session()
     try:
-        num_deleted = session.query(Component).delete()
+        _ = session.query(Component).delete()
 
         for comp_data in components_to_add:
             try:
@@ -141,8 +139,9 @@ def import_from_excel(filename: str) -> bool | None:
                 )
                 session.add(component)
             except ValueError as e:
-                 session.rollback()
-                 raise ComponentError(f"Failed to create component for Part Number '{comp_data['part_number']}': {e}") from e
+                session.rollback()
+                raise ComponentError(
+                    f"Failed to create component for Part Number '{comp_data['part_number']}': {e}") from e
 
         session.commit()
         return True
