@@ -2,7 +2,7 @@ import sys
 import os
 from dotenv import load_dotenv
 import configparser
-import uuid
+
 from PyQt5.QtWidgets import QApplication, QMessageBox, QStyleFactory
 from backend import database
 from frontend.ui.main_window import InventoryUI
@@ -19,7 +19,6 @@ print(f"DEBUG: main.py - Looking for .env at: {env_path}")
 loaded_env = load_dotenv(dotenv_path=env_path, override=True, verbose=True)
 if not loaded_env:
     print(f"WARNING: main.py - .env file not found or empty at {env_path}")
-
 
 # --- Config Reading ---
 config = configparser.ConfigParser()
@@ -44,22 +43,22 @@ try:
         db_url_from_config = config.get('Database', 'url', fallback=None)
         if db_url_from_config:
             if db_url_from_config.startswith("sqlite:///"):
-                 db_filename_or_path = db_url_from_config[len("sqlite///"):]
-                 print(f"INFO: Extracted DB path from config 'url': {db_filename_or_path}")
+                db_filename_or_path = db_url_from_config[len("sqlite///"):]
+                print(f"INFO: Extracted DB path from config 'url': {db_filename_or_path}")
             else:
                 db_filename_or_path = db_url_from_config
                 print(f"INFO: Using DB path directly from config 'url' (not full sqlite URI): {db_filename_or_path}")
             db_filename_or_path = db_filename_or_path.lstrip('/\\')
         else:
-             print(f"INFO: DB 'url' not found in config. Using default filename: {DEFAULT_DB_FILENAME}")
-             db_filename_or_path = DEFAULT_DB_FILENAME
+            print(f"INFO: DB 'url' not found in config. Using default filename: {DEFAULT_DB_FILENAME}")
+            db_filename_or_path = DEFAULT_DB_FILENAME
     else:
-         print(f"WARNING: main.py - config.ini not found or empty at {config_path}. Using default settings.")
+        print(f"WARNING: main.py - config.ini not found or empty at {config_path}. Using default settings.")
 
 except configparser.Error as e:
-     print(f"Error reading configuration file '{config_path}': {e}. Using default settings.")
+    print(f"Error reading configuration file '{config_path}': {e}. Using default settings.")
 except Exception as e:
-     print(f"Unexpected error processing config file '{config_path}': {e}. Using default settings.")
+    print(f"Unexpected error processing config file '{config_path}': {e}. Using default settings.")
 
 # --- Construct DB Path/URL ---
 if os.path.isabs(db_filename_or_path):
@@ -69,7 +68,6 @@ if os.path.isabs(db_filename_or_path):
 else:
     absolute_db_path = os.path.join(application_path, db_filename_or_path)
 db_url_final = f"sqlite:///{absolute_db_path}"
-
 
 print(f"INFO: main.py - Using OpenAI Model: {openai_model}")
 print(f"INFO: main.py - Using Appearance Style: {app_style_name}")
@@ -116,11 +114,11 @@ def main():
         print(f"Available styles: {available_styles}")
     # --- End Apply Style ---
 
-
     view = InventoryUI()
     controller = MainController(view, openai_model=openai_model)
     controller.show_view()
     sys.exit(app.exec_())
+
 
 if __name__ == "__main__":
     main()
