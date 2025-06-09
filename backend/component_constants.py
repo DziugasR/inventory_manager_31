@@ -28,7 +28,8 @@ UI_TO_BACKEND_TYPE_MAP = {
     "Breadboard": "breadboard",
     "Wire": "wire",
     "Battery": "battery",
-    "Power Supply": "power_supply"
+    "Power Supply": "power_supply",
+    "Thermo Couple": "thermo_couple"
 }
 
 BACKEND_TO_UI_TYPE_MAP = {v: k for k, v in UI_TO_BACKEND_TYPE_MAP.items()}

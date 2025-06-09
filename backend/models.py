@@ -228,3 +228,9 @@ PowerSupply = create_component_class(
     polymorphic_id="power_supply",
     spec_format_string="Output Voltage V"
 )
+
+ThermoCouple = create_component_class(
+    class_name="ThermoCouple",
+    polymorphic_id="thermo_couple",
+    spec_format_string="Temperature range C"
+)

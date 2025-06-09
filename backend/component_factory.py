@@ -3,7 +3,7 @@ from backend.models import (
     OpAmp, VoltageRegulator, Microcontroller, IC, MOSFET,
     Photodiode, Switch, Transformer, Speaker, Motor, HeatSink,
     Connector, CrystalOscillator, Buzzer, Thermistor, Varistor,
-    Fuse, Sensor, Antenna, Breadboard, Wire, Battery, PowerSupply
+    Fuse, Sensor, Antenna, Breadboard, Wire, Battery, PowerSupply, ThermoCouple
 )
 
 
@@ -38,7 +38,8 @@ class ComponentFactory:
         "breadboard": Breadboard,
         "wire": Wire,
         "battery": Battery,
-        "power_supply": PowerSupply
+        "power_supply": PowerSupply,
+        "thermo_couple": ThermoCouple
     }
 
     @staticmethod
