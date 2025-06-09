@@ -1,11 +1,14 @@
-def construct_generation_prompt(components, selected_quantities, type_mapping):
+from backend.type_manager import type_manager
+
+
+def construct_generation_prompt(components, selected_quantities):
     component_details = []
     for component in components:
         part_number = component.part_number
         project_qty = selected_quantities.get(part_number, 0)
 
         if project_qty > 0:
-            ui_type = type_mapping.get(component.component_type, component.component_type)
+            ui_type = type_manager.get_ui_name(component.component_type) or component.component_type
             value = component.value or "N/A"
             component_details.append(f"  - {part_number} (Type: {ui_type}, Value: {value}): Quantity {project_qty}")
 

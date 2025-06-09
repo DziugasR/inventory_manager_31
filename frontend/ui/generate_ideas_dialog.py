@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from functools import partial
 
 from .utils import load_stylesheet
+from backend.type_manager import type_manager
 
 
 class GenerateIdeasDialog(QDialog):
@@ -83,13 +84,13 @@ class GenerateIdeasDialog(QDialog):
         main_layout.addWidget(controls_widget, 1)
         self.setLayout(main_layout)
 
-    def populate_table(self, components, type_mapping):
+    def populate_table(self, components):
         self.components_table.setRowCount(len(components))
         self._spinboxes.clear()
 
         for row, component in enumerate(components):
             part_number = component.part_number or ""
-            ui_type = type_mapping.get(component.component_type, component.component_type)
+            ui_type = type_manager.get_ui_name(component.component_type) or component.component_type
             value = component.value or ""
             available_quantity = component.quantity
 

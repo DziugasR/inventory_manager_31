@@ -4,9 +4,13 @@ from dotenv import load_dotenv
 import configparser
 
 from PyQt5.QtWidgets import QApplication, QMessageBox, QStyleFactory
-from backend import database
-from frontend.ui.main_window import InventoryUI
-from frontend.controllers.main_controller import MainController
+
+# We import these later, inside main(), to control the order of operations
+# from backend import database
+# from frontend.ui.main_window import InventoryUI
+# from frontend.controllers.main_controller import MainController
+# from backend.type_manager import type_manager
+
 
 # ---Path, Env Loading---
 if getattr(sys, 'frozen', False):
@@ -81,6 +85,8 @@ def main():
     if not api_key_check:
         print("CRITICAL WARNING: OPENAI_API_KEY not found in environment or .env file!")
 
+    # Import and initialize in the correct order
+    from backend import database
     try:
         database.initialize_database(db_url_final)
         print("INFO: Database initialized successfully.")
@@ -88,6 +94,14 @@ def main():
         print(f"CRITICAL: Failed to initialize database with URL {db_url_final}: {e}")
         QMessageBox.critical(None, "Database Error", f"Could not initialize database:\n{e}\n\nApplication will exit.")
         sys.exit(1)
+
+    # Initialize the TypeManager AFTER the database is ready
+    from backend.type_manager import type_manager
+    type_manager.load_types()
+
+    # Now it is safe to import UI and Controller modules
+    from frontend.ui.main_window import InventoryUI
+    from frontend.controllers.main_controller import MainController
 
     app = QApplication(sys.argv)
 

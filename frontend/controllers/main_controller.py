@@ -1,5 +1,5 @@
 import uuid
-from PyQt5.QtWidgets import QMessageBox, QInputDialog
+from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog, QDialog
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtCore import QObject, QUrl
 
@@ -7,6 +7,7 @@ from frontend.ui.main_window import InventoryUI
 from frontend.ui.add_component_dialog import AddComponentDialog
 from frontend.controllers.generate_ideas_controller import GenerateIdeasController
 from frontend.controllers.import_export_controller import ImportExportController
+from frontend.controllers.type_controller import TypeController
 
 from backend.inventory import (
     get_all_components, add_component, remove_component_quantity, get_component_by_id
@@ -23,6 +24,7 @@ class MainController(QObject):
         self._view = view
         self._openai_model = openai_model
         self._import_export_controller = ImportExportController(self._view, self)
+        self._type_controller = None
         self._connect_signals()
         self._load_initial_data()
 
@@ -50,6 +52,7 @@ class MainController(QObject):
     def open_add_component_dialog(self):
         dialog = AddComponentDialog(self._view)
         dialog.component_data_collected.connect(self._add_new_component)
+        dialog.manage_types_requested.connect(self.open_manage_types_dialog)
         dialog.exec_()
 
     def _add_new_component(self, component_data: dict):
@@ -81,7 +84,23 @@ class MainController(QObject):
         except Exception as e:
             self._show_message("Unexpected Error", f"An unexpected error occurred while adding: {e}", level="critical")
 
+    def open_manage_types_dialog(self, add_component_dialog_instance: AddComponentDialog):
+        """
+        Handles the request to open the 'Manage Types' dialog. This is the new, stable implementation.
+        """
+        if not self._type_controller:
+            self._type_controller = TypeController(self._view)
+
+        # This will open the dialog and wait until it is closed.
+        # It returns true if a new type was successfully added.
+        was_successful = self._type_controller.open_add_type_dialog()
+
+        # If a new type was added, tell the AddComponentDialog to refresh its list.
+        if was_successful:
+            add_component_dialog_instance.refresh_type_list()
+
     def handle_remove_components(self, component_ids: list[uuid.UUID]):
+        # ... (rest of the function is unchanged)
         success_count = 0
         failure_count = 0
         messages = []
@@ -170,6 +189,7 @@ class MainController(QObject):
             self.load_inventory_data()
 
     def open_generate_ideas_dialog(self, checked_ids: list[uuid.UUID]):
+        # ... (rest of the function is unchanged)
         if not checked_ids:
             self._show_message("Generate Ideas", "No components selected.", level="warning")
             return

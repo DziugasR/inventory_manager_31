@@ -4,7 +4,7 @@ from typing import List
 from frontend.ui.generate_ideas_dialog import GenerateIdeasDialog
 from backend.ChatGPT import ChatGPTService
 from backend.generate_ideas_backend import construct_generation_prompt
-from backend.component_constants import BACKEND_TO_UI_TYPE_MAP
+from backend.type_manager import type_manager
 from backend.models import Component
 
 
@@ -31,12 +31,11 @@ class GenerateIdeasController(QObject):
         self.view = GenerateIdeasDialog(parent)
         self.chatgpt_service = ChatGPTService(config_model_name=openai_model_name)
 
-        self._backend_to_ui_map = BACKEND_TO_UI_TYPE_MAP
         self._worker_thread = None
         self._worker = None
 
         self._connect_signals()
-        self._initialize_view(self._backend_to_ui_map)
+        self._initialize_view()
 
         if not self.chatgpt_service.is_ready():
             print("Controller Warning: ChatGPT service failed to initialize.")
@@ -45,8 +44,8 @@ class GenerateIdeasController(QObject):
         self.view.quantity_changed.connect(self._handle_quantity_change)
         self.view.generate_requested.connect(self._handle_generate_request)
 
-    def _initialize_view(self, type_mapping):
-        self.view.populate_table(self.components, type_mapping)
+    def _initialize_view(self):
+        self.view.populate_table(self.components)
 
     def show(self):
         self.view.exec_()
@@ -70,8 +69,7 @@ class GenerateIdeasController(QObject):
 
         prompt = construct_generation_prompt(
             self.components,
-            current_spinbox_values,
-            self._backend_to_ui_map
+            current_spinbox_values
         )
 
         if prompt is None:

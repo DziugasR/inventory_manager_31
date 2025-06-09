@@ -3,6 +3,8 @@ from sqlalchemy.orm import sessionmaker, Session as SessionType
 from sqlalchemy.engine import Engine
 from typing import Optional
 from .models import Base
+from . import models_custom
+
 
 engine: Optional[Engine] = None
 Session: Optional[sessionmaker[SessionType]] = None

@@ -1,15 +1,16 @@
 from PyQt5.QtWidgets import (
     QDialog, QFormLayout, QLineEdit, QComboBox, QSpinBox,
-    QDialogButtonBox, QLabel, QVBoxLayout, QMessageBox
+    QDialogButtonBox, QLabel, QVBoxLayout, QMessageBox, QPushButton, QHBoxLayout
 )
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QObject
 
-from backend.component_constants import UI_TYPE_NAMES, UI_TO_BACKEND_TYPE_MAP
+from backend.type_manager import type_manager
 from backend.exceptions import InvalidInputError
 
 
 class AddComponentDialog(QDialog):
     component_data_collected = pyqtSignal(dict)
+    manage_types_requested = pyqtSignal(QObject)  # Signal now emits an object
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -18,44 +19,20 @@ class AddComponentDialog(QDialog):
         self.layout = QVBoxLayout(self)
         self.form_layout = QFormLayout()
 
-        self.component_types = {
-            "Resistor": ["Resistance (Ω)", "Tolerance (%)"],
-            "Capacitor": ["Capacitance (µF)", "Voltage (V)"],
-            "Inductor": ["Inductance (H)", "Current Rating (A)"],
-            "Diode": ["Forward Voltage (V)", "Current Rating (A)"],
-            "Transistor": ["Gain (hFE)", "Voltage Rating (V)"],
-            "LED": ["Wavelength (nm)", "Luminous Intensity (mcd)"],
-            "Relay": ["Coil Voltage (V)", "Contact Rating (A)"],
-            "Op-Amp": ["Gain Bandwidth (Hz)", "Slew Rate (V/µs)"],
-            "Voltage Regulator": ["Output Voltage (V)", "Current Rating (A)"],
-            "Microcontroller": ["Architecture", "Flash Memory (KB)"],
-            "IC": ["Number of Pins", "Function"],
-            "MOSFET": ["Drain-Source Voltage (V)", "Rds(on) (Ω)"],
-            "Photodiode": ["Wavelength Range (nm)", "Sensitivity (A/W)"],
-            "Switch": ["Current Rating (A)", "Number of Positions"],
-            "Transformer": ["Primary Voltage (V)", "Secondary Voltage (V)"],
-            "Speaker": ["Impedance (Ω)", "Power Rating (W)"],
-            "Motor": ["Voltage (V)", "RPM"],
-            "Heat Sink": ["Thermal Resistance (°C/W)", "Size (mm)"],
-            "Connector": ["Number of Pins", "Pitch (mm)"],
-            "Crystal Oscillator": ["Frequency (MHz)", "Load Capacitance (pF)"],
-            "Buzzer": ["Operating Voltage (V)", "Sound Level (dB)"],
-            "Thermistor": ["Resistance at 25°C (Ω)", "Beta Value (K)"],
-            "Varistor": ["Voltage Rating (V)", "Clamping Voltage (V)"],
-            "Fuse": ["Current Rating (A)", "Voltage Rating (V)"],
-            "Sensor": ["Type", "Output Signal"],
-            "Antenna": ["Frequency Range (MHz)", "Gain (dBi)"],
-            "Breadboard": ["Size (mm)", "Number of Tie Points"],
-            "Wire": ["Gauge (AWG)", "Length (m)"],
-            "Battery": ["Voltage (V)", "Capacity (mAh)"],
-            "Power Supply": ["Output Voltage (V)", "Output Current (A)"]
-        }
-
+        # --- Type ComboBox and Manage Button ---
+        type_layout = QHBoxLayout()
         self.type_input = QComboBox(self)
-
-        self.type_input.addItems(UI_TYPE_NAMES)
+        self.type_input.addItems(type_manager.get_all_ui_names())
         self.type_input.currentTextChanged.connect(self.update_fields)
-        self.form_layout.addRow("Type:", self.type_input)
+
+        self.manage_types_button = QPushButton("Manage Types...")
+        # Emit self when clicked
+        self.manage_types_button.clicked.connect(lambda: self.manage_types_requested.emit(self))
+
+        type_layout.addWidget(self.type_input)
+        type_layout.addWidget(self.manage_types_button)
+        self.form_layout.addRow("Type:", type_layout)
+        # ----------------------------------------
 
         self.part_number_input = QLineEdit(self)
         self.form_layout.addRow("Part Number:", self.part_number_input)
@@ -82,6 +59,34 @@ class AddComponentDialog(QDialog):
         self.button_box.rejected.connect(self.reject)
         self.layout.addWidget(self.button_box)
 
+    def refresh_type_list(self):
+        print("DEBUG: AddComponentDialog refreshing its type list...")
+        current_selection = self.type_input.currentText()
+        self.type_input.blockSignals(True)
+        self.type_input.clear()
+        self.type_input.addItems(type_manager.get_all_ui_names())
+
+        index = self.type_input.findText(current_selection)
+        if index == -1:
+            # If the old selection is gone, maybe a new one was just added
+            # This is a bit of a guess, but better than nothing.
+            if type_manager.get_all_ui_names():
+                # Find the last added custom type
+                session = type_manager.get_session()
+                try:
+                    last_custom = session.query(type_manager.ComponentTypeDefinition).order_by(
+                        type_manager.ComponentTypeDefinition.id.desc()).first()
+                    if last_custom:
+                        index = self.type_input.findText(last_custom.ui_name)
+                finally:
+                    session.close()
+
+        if index != -1:
+            self.type_input.setCurrentIndex(index)
+
+        self.type_input.blockSignals(False)
+        self.update_fields()
+
     def update_fields(self):
         self._clear_dynamic_fields()
         self._create_dynamic_fields()
@@ -96,7 +101,7 @@ class AddComponentDialog(QDialog):
 
     def _create_dynamic_fields(self):
         selected_type = self.type_input.currentText()
-        fields = self.component_types.get(selected_type, [])
+        fields = type_manager.get_properties(selected_type)
 
         quantity_row_index = -1
         for i in range(self.form_layout.rowCount()):
@@ -120,21 +125,21 @@ class AddComponentDialog(QDialog):
             return False
 
         selected_type = self.type_input.currentText()
-        fields_for_type = self.component_types.get(selected_type, [])
+        fields_for_type = type_manager.get_properties(selected_type)
         primary_value_field_name = fields_for_type[0] if fields_for_type else None
 
-        for field_name, (_, input_field) in self.dynamic_fields.items():
-            value = input_field.text().strip()
-            if field_name == primary_value_field_name and not value:
+        if primary_value_field_name:
+            primary_input_widget = self.dynamic_fields.get(primary_value_field_name, (None, None))[1]
+            if primary_input_widget and not primary_input_widget.text().strip():
                 QMessageBox.warning(self, "Input Error",
-                                    f"Primary value '{field_name}' is required for {selected_type}.")
+                                    f"Primary value '{primary_value_field_name}' is required for {selected_type}.")
                 return False
 
         return True
 
     def get_component_data(self):
         selected_ui_type = self.type_input.currentText()
-        backend_type_id = UI_TO_BACKEND_TYPE_MAP.get(selected_ui_type)
+        backend_type_id = type_manager.get_backend_id(selected_ui_type)
 
         if backend_type_id is None:
             QMessageBox.critical(self, "Internal Error",

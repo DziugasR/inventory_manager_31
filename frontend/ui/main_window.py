@@ -8,7 +8,7 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
 from .utils import load_stylesheet
-from backend.component_constants import BACKEND_TO_UI_TYPE_MAP
+from backend.type_manager import type_manager
 
 
 class InventoryUI(QMainWindow):
@@ -216,8 +216,6 @@ class InventoryUI(QMainWindow):
         self._row_id_map.clear()
         self.table.setRowCount(len(components))
 
-        backend_to_ui_name_mapping = BACKEND_TO_UI_TYPE_MAP
-
         if not components:
             self._update_buttons_state_on_checkbox()
             self.table.setSortingEnabled(True)
@@ -238,8 +236,7 @@ class InventoryUI(QMainWindow):
             if component_id == current_selection_id:
                 new_selection_row = row
 
-            # Use the mapping with a fallback to the original backend ID if not found
-            ui_component_type = backend_to_ui_name_mapping.get(component.component_type, component.component_type)
+            ui_component_type = type_manager.get_ui_name(component.component_type) or component.component_type
 
             pn_item = QTableWidgetItem(component.part_number or "")
             pn_item.setData(Qt.UserRole, component_id)
