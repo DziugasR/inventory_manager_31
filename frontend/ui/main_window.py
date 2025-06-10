@@ -2,13 +2,15 @@ import uuid
 
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
-    QVBoxLayout, QWidget, QHBoxLayout, QCheckBox, QStyle, QAbstractItemView, QHeaderView
+    QVBoxLayout, QWidget, QHBoxLayout, QCheckBox, QStyle, QAbstractItemView, QHeaderView,
+    QLineEdit
 )
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 
 from .utils import load_stylesheet
-from backend.type_manager import type_manager
+from backend.component_constants import BACKEND_TO_UI_TYPE_MAP
+from .menu_bar import AppMenuBar
 
 
 class InventoryUI(QMainWindow):
@@ -19,6 +21,7 @@ class InventoryUI(QMainWindow):
     import_requested = pyqtSignal()
     load_data_requested = pyqtSignal()
     link_clicked = pyqtSignal(QUrl)
+    search_text_changed = pyqtSignal(str)
 
     PART_NUMBER_COL = 0
     TYPE_COL = 1
@@ -38,6 +41,11 @@ class InventoryUI(QMainWindow):
         self._connect_signals()
 
     def _init_ui(self):
+        # --- START: MODIFIED ---
+        # Instantiate and STORE the menu bar handler to keep it in memory.
+        self.menu_bar_handler = AppMenuBar(self)
+        # --- END: MODIFIED ---
+
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
 
@@ -72,6 +80,10 @@ class InventoryUI(QMainWindow):
 
         self.layout.addLayout(button_layout)
 
+        self.search_bar = QLineEdit()
+        self.search_bar.setPlaceholderText("Search by Part Number, Type, or Value...")
+        self.layout.addWidget(self.search_bar)
+
         self.table = QTableWidget()
 
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -94,8 +106,6 @@ class InventoryUI(QMainWindow):
         if button_stylesheet:
             self.central_widget.setStyleSheet(button_stylesheet)
 
-        self._adjust_window_width()
-
     def _connect_signals(self):
         self.add_button.clicked.connect(self.add_component_requested)
         self.remove_button.clicked.connect(self._on_remove_clicked)
@@ -103,6 +113,7 @@ class InventoryUI(QMainWindow):
         self.export_button.clicked.connect(self._on_export_clicked)
         self.import_button.clicked.connect(self._on_import_clicked)
         self.table.cellClicked.connect(self._handle_cell_click)
+        self.search_bar.textChanged.connect(self.search_text_changed.emit)
 
     def _adjust_window_width(self):
         total_width = self.table.verticalHeader().width()
@@ -191,7 +202,7 @@ class InventoryUI(QMainWindow):
             return None
 
         headers = [self.table.horizontalHeaderItem(i).text() for i in
-                   range(self.table.columnCount() - 1)]  # Exclude checkbox col header
+                   range(self.table.columnCount() - 1)]
         data = {}
         component_id = self._row_id_map.get(selected_row)
         if component_id:
@@ -216,6 +227,8 @@ class InventoryUI(QMainWindow):
         self._row_id_map.clear()
         self.table.setRowCount(len(components))
 
+        backend_to_ui_name_mapping = BACKEND_TO_UI_TYPE_MAP
+
         if not components:
             self._update_buttons_state_on_checkbox()
             self.table.setSortingEnabled(True)
@@ -236,7 +249,7 @@ class InventoryUI(QMainWindow):
             if component_id == current_selection_id:
                 new_selection_row = row
 
-            ui_component_type = type_manager.get_ui_name(component.component_type) or component.component_type
+            ui_component_type = backend_to_ui_name_mapping.get(component.component_type, component.component_type)
 
             pn_item = QTableWidgetItem(component.part_number or "")
             pn_item.setData(Qt.UserRole, component_id)
@@ -294,4 +307,3 @@ class InventoryUI(QMainWindow):
         else:
             self.table.clearSelection()
         self._update_buttons_state_on_checkbox()
-        self._adjust_window_width()

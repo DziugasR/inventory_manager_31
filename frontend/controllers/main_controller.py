@@ -1,13 +1,14 @@
 import uuid
-from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog, QDialog
+from PyQt5.QtWidgets import QMessageBox, QInputDialog
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtCore import QObject, QUrl
 
 from frontend.ui.main_window import InventoryUI
 from frontend.ui.add_component_dialog import AddComponentDialog
+from frontend.ui.add_type_dialog import AddTypeDialog
+from backend.type_manager import type_manager
 from frontend.controllers.generate_ideas_controller import GenerateIdeasController
 from frontend.controllers.import_export_controller import ImportExportController
-from frontend.controllers.type_controller import TypeController
 
 from backend.inventory import (
     get_all_components, add_component, remove_component_quantity, get_component_by_id
@@ -23,8 +24,8 @@ class MainController(QObject):
         super().__init__()
         self._view = view
         self._openai_model = openai_model
+        self._current_search_term = ""
         self._import_export_controller = ImportExportController(self._view, self)
-        self._type_controller = None
         self._connect_signals()
         self._load_initial_data()
 
@@ -36,14 +37,32 @@ class MainController(QObject):
         self._view.export_requested.connect(self._import_export_controller.handle_export_request)
         self._view.import_requested.connect(self._import_export_controller.handle_import_request)
         self._view.link_clicked.connect(self.open_link_in_browser)
+        self._view.search_text_changed.connect(self.handle_search_query)
 
     def _load_initial_data(self):
+        self.load_inventory_data()
+        self._view._adjust_window_width() # Adjust window size only on initial load
+
+    def handle_search_query(self, query: str):
+        self._current_search_term = query.strip().lower()
         self.load_inventory_data()
 
     def load_inventory_data(self):
         try:
             components = get_all_components()
-            self._view.display_data(components)
+
+            if self._current_search_term:
+                search_term = self._current_search_term
+                filtered_components = [
+                    c for c in components if
+                    search_term in str(c.part_number or "").lower() or
+                    search_term in str(c.component_type or "").lower() or
+                    search_term in str(c.value or "").lower()
+                ]
+                self._view.display_data(filtered_components)
+            else:
+                self._view.display_data(components)
+
         except DatabaseError as e:
             self._show_message("Database Error", f"Failed to load inventory: {e}", level="critical")
         except Exception as e:
@@ -54,6 +73,47 @@ class MainController(QObject):
         dialog.component_data_collected.connect(self._add_new_component)
         dialog.manage_types_requested.connect(self.open_manage_types_dialog)
         dialog.exec_()
+
+    def open_manage_types_dialog(self, source_dialog: AddComponentDialog):
+        """
+        Opens the dialog to add a new component type. This is triggered by the
+        "Manage Types..." button in the AddComponentDialog.
+        """
+        type_dialog = AddTypeDialog(self._view)
+        # Connect the signal from the new dialog to a handler that will add the type
+        # and refresh the original dialog's list.
+        type_dialog.new_type_data_collected.connect(
+            lambda data: self._add_new_type(data, source_dialog)
+        )
+        type_dialog.exec_()
+
+    def _add_new_type(self, type_data: dict, source_dialog_to_refresh: AddComponentDialog):
+        """
+        Handles the data from AddTypeDialog, adds the new type via the type_manager,
+        and then refreshes the dropdown in the AddComponentDialog.
+        """
+        try:
+            ui_name = type_data['ui_name']
+            properties = type_data['properties']
+
+            # --- START: FIX ---
+            # Call the correct method `add_new_type` and handle its return tuple (success, message).
+            success, message = type_manager.add_new_type(ui_name, properties)
+
+            if success:
+                # Use the success message from the type manager
+                self._show_message("Success", message, level="info")
+                # Now, tell the original dialog to refresh its list of types.
+                source_dialog_to_refresh.refresh_type_list()
+            else:
+                # Use the error message from the type manager
+                self._show_message("Error Adding Type", f"Could not add the new type: {message}", level="critical")
+            # --- END: FIX ---
+
+        except KeyError:
+            self._show_message("Error", "Invalid data received from the type dialog.", level="critical")
+        except Exception as e:
+            self._show_message("Unexpected Error", f"An unexpected error occurred while adding the type: {e}", level="critical")
 
     def _add_new_component(self, component_data: dict):
         try:
@@ -84,23 +144,7 @@ class MainController(QObject):
         except Exception as e:
             self._show_message("Unexpected Error", f"An unexpected error occurred while adding: {e}", level="critical")
 
-    def open_manage_types_dialog(self, add_component_dialog_instance: AddComponentDialog):
-        """
-        Handles the request to open the 'Manage Types' dialog. This is the new, stable implementation.
-        """
-        if not self._type_controller:
-            self._type_controller = TypeController(self._view)
-
-        # This will open the dialog and wait until it is closed.
-        # It returns true if a new type was successfully added.
-        was_successful = self._type_controller.open_add_type_dialog()
-
-        # If a new type was added, tell the AddComponentDialog to refresh its list.
-        if was_successful:
-            add_component_dialog_instance.refresh_type_list()
-
     def handle_remove_components(self, component_ids: list[uuid.UUID]):
-        # ... (rest of the function is unchanged)
         success_count = 0
         failure_count = 0
         messages = []
@@ -189,7 +233,6 @@ class MainController(QObject):
             self.load_inventory_data()
 
     def open_generate_ideas_dialog(self, checked_ids: list[uuid.UUID]):
-        # ... (rest of the function is unchanged)
         if not checked_ids:
             self._show_message("Generate Ideas", "No components selected.", level="warning")
             return
