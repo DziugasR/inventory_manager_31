@@ -1,4 +1,7 @@
 import uuid
+import os
+import re
+import sys
 from PyQt5.QtWidgets import QMessageBox, QInputDialog
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtCore import QObject, QUrl
@@ -10,6 +13,9 @@ from backend.type_manager import type_manager
 from frontend.controllers.generate_ideas_controller import GenerateIdeasController
 from frontend.controllers.import_export_controller import ImportExportController
 
+from backend import database
+from backend import inventory_manager
+from backend.models_custom import Inventory
 from backend.inventory import (
     get_all_components, add_component, remove_component_quantity, get_component_by_id
 )
@@ -20,12 +26,17 @@ from backend.exceptions import (
 
 
 class MainController(QObject):
-    def __init__(self, view: InventoryUI, openai_model: str):
+    def __init__(self, view: InventoryUI, openai_model: str, app_path: str):
         super().__init__()
         self._view = view
         self._openai_model = openai_model
+        self._app_path = app_path
         self._current_search_term = ""
         self._import_export_controller = ImportExportController(self._view, self)
+
+        self._active_inventory: Inventory | None = None
+        self._inventories: list[Inventory] = []
+
         self._connect_signals()
         self._load_initial_data()
 
@@ -39,9 +50,92 @@ class MainController(QObject):
         self._view.link_clicked.connect(self.open_link_in_browser)
         self._view.search_text_changed.connect(self.handle_search_query)
 
+        self._view.menu_bar_handler.new_inventory_action.triggered.connect(self.handle_new_inventory)
+
     def _load_initial_data(self):
+        try:
+            self._inventories = inventory_manager.get_all_inventories()
+            if not self._inventories:
+                raise DatabaseError("No inventories found in the configuration database.")
+
+            self._active_inventory = self._inventories[0]
+            self._update_inventory_menu()
+            self._update_window_title()
+
+        except DatabaseError as e:
+            self._show_message("Fatal Error", f"Could not load inventory list: {e}", "critical")
+            return
+
         self.load_inventory_data()
-        self._view._adjust_window_width() # Adjust window size only on initial load
+        self._view._adjust_window_width()
+
+    def _update_inventory_menu(self):
+        menu = self._view.menu_bar_handler.open_inventory_menu
+        menu.clear()
+
+        for inv in self._inventories:
+            action = menu.addAction(inv.name)
+            action.triggered.connect(lambda checked=False, inventory=inv: self.switch_inventory(inventory))
+            if self._active_inventory and self._active_inventory.id == inv.id:
+                font = action.font()
+                font.setBold(True)
+                action.setFont(font)
+
+    def _update_window_title(self):
+        if self._active_inventory:
+            self._view.menu_bar_handler.table_name_label.setText(self._active_inventory.name)
+        else:
+            self._view.menu_bar_handler.table_name_label.setText("No Inventory Loaded")
+
+    def switch_inventory(self, inventory: Inventory):
+        print(f"Controller: Switching to inventory '{inventory.name}'")
+        if self._active_inventory and self._active_inventory.id == inventory.id:
+            print("Controller: Already on this inventory. No switch needed.")
+            return
+
+        try:
+            if os.path.isabs(inventory.db_path):
+                db_path = inventory.db_path
+            else:
+                db_path = os.path.join(self._app_path, inventory.db_path)
+
+            db_url = f"sqlite:///{db_path}"
+            print(f"Controller: Switching DB connection to URL: {db_url}")
+
+            database.switch_inventory_db(db_url)
+            self._active_inventory = inventory
+
+            self.load_inventory_data()
+            self._update_window_title()
+            self._update_inventory_menu()
+
+        except Exception as e:
+            self._show_message("Switch Error", f"Failed to switch to inventory '{inventory.name}':\n{e}", "critical")
+
+    def handle_new_inventory(self):
+        name, ok = QInputDialog.getText(self._view, "New Inventory", "Enter a name for the new inventory:")
+        if ok and name:
+            name = name.strip()
+            if not name:
+                self._show_message("Invalid Name", "Inventory name cannot be empty.", "warning")
+                return
+
+            sanitized_name = re.sub(r'[^\w\s-]', '', name).strip().replace(' ', '_').lower()
+            db_filename = f"inventory_{sanitized_name}.db"
+
+            try:
+                new_inventory = inventory_manager.add_new_inventory(name, db_filename)
+                self._inventories.append(new_inventory)
+                self._inventories.sort(key=lambda x: x.name)
+
+                self._update_inventory_menu()
+                self.switch_inventory(new_inventory)
+                self._show_message("Success", f"Successfully created and switched to inventory '{name}'.", "info")
+
+            except (DuplicateComponentError, DatabaseError) as e:
+                self._show_message("Creation Error", str(e), "critical")
+            except Exception as e:
+                self._show_message("Unexpected Error", f"An unexpected error occurred: {e}", "critical")
 
     def handle_search_query(self, query: str):
         self._current_search_term = query.strip().lower()
@@ -75,45 +169,29 @@ class MainController(QObject):
         dialog.exec_()
 
     def open_manage_types_dialog(self, source_dialog: AddComponentDialog):
-        """
-        Opens the dialog to add a new component type. This is triggered by the
-        "Manage Types..." button in the AddComponentDialog.
-        """
         type_dialog = AddTypeDialog(self._view)
-        # Connect the signal from the new dialog to a handler that will add the type
-        # and refresh the original dialog's list.
         type_dialog.new_type_data_collected.connect(
             lambda data: self._add_new_type(data, source_dialog)
         )
         type_dialog.exec_()
 
     def _add_new_type(self, type_data: dict, source_dialog_to_refresh: AddComponentDialog):
-        """
-        Handles the data from AddTypeDialog, adds the new type via the type_manager,
-        and then refreshes the dropdown in the AddComponentDialog.
-        """
         try:
             ui_name = type_data['ui_name']
             properties = type_data['properties']
-
-            # --- START: FIX ---
-            # Call the correct method `add_new_type` and handle its return tuple (success, message).
             success, message = type_manager.add_new_type(ui_name, properties)
 
             if success:
-                # Use the success message from the type manager
                 self._show_message("Success", message, level="info")
-                # Now, tell the original dialog to refresh its list of types.
                 source_dialog_to_refresh.refresh_type_list()
             else:
-                # Use the error message from the type manager
                 self._show_message("Error Adding Type", f"Could not add the new type: {message}", level="critical")
-            # --- END: FIX ---
 
         except KeyError:
             self._show_message("Error", "Invalid data received from the type dialog.", level="critical")
         except Exception as e:
-            self._show_message("Unexpected Error", f"An unexpected error occurred while adding the type: {e}", level="critical")
+            self._show_message("Unexpected Error", f"An unexpected error occurred while adding the type: {e}",
+                               level="critical")
 
     def _add_new_component(self, component_data: dict):
         try:

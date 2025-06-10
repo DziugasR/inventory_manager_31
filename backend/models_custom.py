@@ -5,6 +5,16 @@ from sqlalchemy.orm import validates
 from .models import Base
 
 
+class Inventory(Base):
+    __tablename__ = 'inventories'
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, nullable=False, unique=True)
+    db_path = Column(String, nullable=False, unique=True)
+
+    def __repr__(self):
+        return f"<Inventory(id='{self.id}', name='{self.name}', path='{self.db_path}')>"
+
+
 class ComponentTypeDefinition(Base):
     __tablename__ = 'component_type_definitions'
 

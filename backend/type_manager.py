@@ -1,6 +1,6 @@
 import json
 import re
-from .database import get_session
+from .database import get_config_session
 from .models import Component, create_component_class
 from .models_custom import ComponentTypeDefinition
 from .component_constants import UI_TO_BACKEND_TYPE_MAP
@@ -73,7 +73,7 @@ class TypeManager:
 
     def _load_custom_types_from_db(self):
         print("DEBUG: Loading custom types from DB...")
-        session = get_session()
+        session = get_config_session()
         try:
             custom_types = session.query(ComponentTypeDefinition).all()
             for custom_type in custom_types:
@@ -105,8 +105,7 @@ class TypeManager:
         print("DEBUG: Component class registration complete.")
 
     def add_new_type(self, ui_name: str, properties: list[str]):
-        """High-level method to add a new type and reload the manager."""
-        session = get_session()
+        session = get_config_session()
         try:
             backend_id = re.sub(r'\s+', '_', ui_name.strip()).lower()
             backend_id = re.sub(r'[^a-z0-9_]', '', backend_id)
@@ -129,7 +128,6 @@ class TypeManager:
             session.commit()
             print(f"INFO: Successfully added new custom type '{ui_name}' to the database.")
 
-            # Now, reload everything in the manager
             self.load_types()
             return True, f"Successfully added new type '{ui_name}'."
         except Exception as e:

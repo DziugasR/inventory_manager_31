@@ -1,44 +1,35 @@
-from PyQt5.QtWidgets import QMenuBar, QAction, QMessageBox, QLabel
+from PyQt5.QtWidgets import QMenuBar, QAction, QMessageBox, QLabel, QMenu
 from PyQt5.QtCore import Qt
 
 
 class AppMenuBar:
-    """
-    Handles the creation and logic for the main window's menu bar.
-    This class encapsulates all menu actions and help dialogs to keep
-    the main window class cleaner.
-    """
-
     def __init__(self, parent_window):
-        """
-        Initializes and builds the menu bar for the given parent window.
-
-        Args:
-            parent_window (QMainWindow): The main window to which the menu bar will be attached.
-        """
         self.parent = parent_window
-        self.table_name_label = None  # Initialize attribute
+        self.table_name_label = None
+        self.open_inventory_menu = None
+        self.new_inventory_action = None
         self._create_menu_bar()
 
     def _create_menu_bar(self):
-        """Creates the main menu bar and attaches it to the parent window."""
         menu_bar = self.parent.menuBar()
 
-        # File Menu
         file_menu = menu_bar.addMenu("&File")
-        file_menu.addAction(QAction("New Inventory...", self.parent))
-        file_menu.addAction(QAction("Open Inventory...", self.parent))
+
+        self.new_inventory_action = QAction("New Inventory...", self.parent)
+        file_menu.addAction(self.new_inventory_action)
+
+        self.open_inventory_menu = QMenu("Open Inventory", self.parent)
+        file_menu.addMenu(self.open_inventory_menu)
+
         file_menu.addSeparator()
         exit_action = QAction("Exit", self.parent)
         exit_action.triggered.connect(self.parent.close)
         file_menu.addAction(exit_action)
 
-        # Tools Menu
         tools_menu = menu_bar.addMenu("&Tools")
         tools_menu.addAction(QAction("Options...", self.parent))
         tools_menu.addAction(QAction("Manage Component Types...", self.parent))
 
-        # Help Menu
         help_menu = menu_bar.addMenu("&Help")
 
         about_action = QAction("About", self.parent)
@@ -71,17 +62,13 @@ class AppMenuBar:
         help_import_action.triggered.connect(self._show_help_import)
         help_menu.addAction(help_import_action)
 
-        # --- START: ADDED ---
         self.table_name_label = QLabel("Table_1")
         self.table_name_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.table_name_label.setStyleSheet("padding-right: 15px; padding-top: 3px; font_weight: bold ;font-style: normal; color: Black;")
 
-        # Add the label to the top-right corner of the menu bar
         menu_bar.setCornerWidget(self.table_name_label, Qt.TopRightCorner)
-        # --- END: ADDED ---
 
     def _show_about_dialog(self):
-        """Shows a simple about dialog box."""
         QMessageBox.about(
             self.parent,
             "About Electronics Inventory Manager",
@@ -92,7 +79,6 @@ class AppMenuBar:
         )
 
     def _show_help_message(self, title: str, message: str):
-        """Helper function to show a standardized help message box."""
         QMessageBox.information(self.parent, title, message)
 
     def _show_help_table(self):
