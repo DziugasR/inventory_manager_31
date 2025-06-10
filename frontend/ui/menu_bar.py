@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QMenuBar, QAction, QMessageBox
+from PyQt5.QtWidgets import QMenuBar, QAction, QMessageBox, QLabel
+from PyQt5.QtCore import Qt
 
 
 class AppMenuBar:
@@ -16,6 +17,7 @@ class AppMenuBar:
             parent_window (QMainWindow): The main window to which the menu bar will be attached.
         """
         self.parent = parent_window
+        self.table_name_label = None  # Initialize attribute
         self._create_menu_bar()
 
     def _create_menu_bar(self):
@@ -68,6 +70,15 @@ class AppMenuBar:
         help_import_action = QAction("How to use: Import from Excel", self.parent)
         help_import_action.triggered.connect(self._show_help_import)
         help_menu.addAction(help_import_action)
+
+        # --- START: ADDED ---
+        self.table_name_label = QLabel("Table_1")
+        self.table_name_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.table_name_label.setStyleSheet("padding-right: 15px; padding-top: 3px; font_weight: bold ;font-style: normal; color: Black;")
+
+        # Add the label to the top-right corner of the menu bar
+        menu_bar.setCornerWidget(self.table_name_label, Qt.TopRightCorner)
+        # --- END: ADDED ---
 
     def _show_about_dialog(self):
         """Shows a simple about dialog box."""
