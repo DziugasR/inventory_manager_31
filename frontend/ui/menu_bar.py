@@ -1,5 +1,29 @@
-from PyQt5.QtWidgets import QMenuBar, QAction, QMessageBox, QLabel, QMenu
+from PyQt5.QtWidgets import QMenuBar, QAction, QMessageBox, QLabel, QMenu, QSizePolicy
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFontMetrics
+
+
+class ElidedLabel(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._full_text = ""
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.setMinimumWidth(250)
+        self.setMaximumWidth(450)
+
+    def setText(self, text: str):
+        self._full_text = text
+        self.setToolTip(text)
+        self._update_elided_text()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_elided_text()
+
+    def _update_elided_text(self):
+        metrics = QFontMetrics(self.font())
+        elided = metrics.elidedText(self._full_text, Qt.ElideRight, self.width())
+        super().setText(elided)
 
 
 class AppMenuBar:
@@ -8,7 +32,12 @@ class AppMenuBar:
         self.table_name_label = None
         self.open_inventory_menu = None
         self.new_inventory_action = None
+        self.delete_inventory_action = None
         self._create_menu_bar()
+
+    def set_inventory_name(self, name: str):
+        if self.table_name_label:
+            self.table_name_label.setText(name)
 
     def _create_menu_bar(self):
         menu_bar = self.parent.menuBar()
@@ -20,6 +49,9 @@ class AppMenuBar:
 
         self.open_inventory_menu = QMenu("Open Inventory", self.parent)
         file_menu.addMenu(self.open_inventory_menu)
+
+        self.delete_inventory_action = QAction("Delete Inventory...", self.parent)
+        file_menu.addAction(self.delete_inventory_action)
 
         file_menu.addSeparator()
         exit_action = QAction("Exit", self.parent)
@@ -62,7 +94,7 @@ class AppMenuBar:
         help_import_action.triggered.connect(self._show_help_import)
         help_menu.addAction(help_import_action)
 
-        self.table_name_label = QLabel("Table_1")
+        self.table_name_label = ElidedLabel(self.parent)
         self.table_name_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.table_name_label.setStyleSheet("padding-right: 15px; padding-top: 3px; font_weight: bold ;font-style: normal; color: Black;")
 

@@ -21,7 +21,8 @@ def initialize_databases(config_db_url: str, inventory_db_url: str):
 
     print(f"INFO: Initializing Config DB with URL: {config_db_url}")
     try:
-        config_engine = create_engine(config_db_url, echo=False)
+        # Added connect_args for thread safety with PyQt
+        config_engine = create_engine(config_db_url, echo=False, connect_args={"check_same_thread": False})
         ConfigBase.metadata.create_all(config_engine)
         ConfigSession = sessionmaker(bind=config_engine)
         with config_engine.connect():
@@ -32,7 +33,8 @@ def initialize_databases(config_db_url: str, inventory_db_url: str):
 
     print(f"INFO: Initializing Inventory DB with URL: {inventory_db_url}")
     try:
-        inventory_engine = create_engine(inventory_db_url, echo=False)
+        # Added connect_args for thread safety with PyQt
+        inventory_engine = create_engine(inventory_db_url, echo=False, connect_args={"check_same_thread": False})
         InventoryBase.metadata.create_all(inventory_engine)
         InventorySession = sessionmaker(bind=inventory_engine)
         with inventory_engine.connect():
@@ -51,9 +53,18 @@ def initialize_databases(config_db_url: str, inventory_db_url: str):
 def switch_inventory_db(inventory_db_url: str):
     global inventory_engine, InventorySession
 
+    # *** THE CRITICAL FIX IS HERE ***
+    # Before creating a new engine, we must dispose of the old one to close its connections
+    # and release any file locks it might be holding.
+    if inventory_engine:
+        print(f"INFO: Disposing old inventory engine connections...")
+        inventory_engine.dispose()
+
     print(f"INFO: Switching to Inventory DB: {inventory_db_url}")
     try:
-        inventory_engine = create_engine(inventory_db_url, echo=False)
+        # Create the new engine for the new database file
+        # Added connect_args for thread safety with PyQt
+        inventory_engine = create_engine(inventory_db_url, echo=False, connect_args={"check_same_thread": False})
         InventoryBase.metadata.create_all(inventory_engine)
         InventorySession = sessionmaker(bind=inventory_engine)
         with inventory_engine.connect():

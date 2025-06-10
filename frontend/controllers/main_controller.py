@@ -51,6 +51,7 @@ class MainController(QObject):
         self._view.search_text_changed.connect(self.handle_search_query)
 
         self._view.menu_bar_handler.new_inventory_action.triggered.connect(self.handle_new_inventory)
+        self._view.menu_bar_handler.delete_inventory_action.triggered.connect(self.handle_delete_inventory)
 
     def _load_initial_data(self):
         try:
@@ -83,9 +84,9 @@ class MainController(QObject):
 
     def _update_window_title(self):
         if self._active_inventory:
-            self._view.menu_bar_handler.table_name_label.setText(self._active_inventory.name)
+            self._view.menu_bar_handler.set_inventory_name(self._active_inventory.name)
         else:
-            self._view.menu_bar_handler.table_name_label.setText("No Inventory Loaded")
+            self._view.menu_bar_handler.set_inventory_name("No Inventory Loaded")
 
     def switch_inventory(self, inventory: Inventory):
         print(f"Controller: Switching to inventory '{inventory.name}'")
@@ -136,6 +137,46 @@ class MainController(QObject):
                 self._show_message("Creation Error", str(e), "critical")
             except Exception as e:
                 self._show_message("Unexpected Error", f"An unexpected error occurred: {e}", "critical")
+
+    def handle_delete_inventory(self):
+        if len(self._inventories) <= 1:
+            self._show_message("Action Not Allowed", "You cannot delete the last remaining inventory.", "warning")
+            return
+
+        deletable_inventories = [inv for inv in self._inventories if inv.id != self._active_inventory.id]
+
+        if not deletable_inventories:
+            self._show_message("Action Not Allowed",
+                               "You cannot delete the currently active inventory.\nPlease switch to another inventory first.",
+                               "warning")
+            return
+
+        inventory_names = [inv.name for inv in deletable_inventories]
+
+        item, ok = QInputDialog.getItem(self._view, "Delete Inventory", "Select an inventory to delete:",
+                                        inventory_names, 0, False)
+
+        if ok and item:
+            inventory_to_delete = next((inv for inv in deletable_inventories if inv.name == item), None)
+            if not inventory_to_delete:
+                self._show_message("Error", "Could not find the selected inventory to delete.", "critical")
+                return
+
+            confirm_msg = f"Are you sure you want to permanently delete the inventory '{inventory_to_delete.name}'?\n\nThis action CANNOT be undone and will delete the associated data file."
+            reply = QMessageBox.question(self._view, 'Confirm Deletion', confirm_msg, QMessageBox.Yes | QMessageBox.No,
+                                         QMessageBox.No)
+
+            if reply == QMessageBox.Yes:
+                try:
+                    inventory_manager.delete_inventory(inventory_to_delete.id, self._app_path)
+                    self._inventories = [inv for inv in self._inventories if inv.id != inventory_to_delete.id]
+                    self._update_inventory_menu()
+                    self._show_message("Success", f"Inventory '{inventory_to_delete.name}' has been deleted.", "info")
+                except (ComponentNotFoundError, DatabaseError) as e:
+                    self._show_message("Deletion Error", str(e), "critical")
+                except Exception as e:
+                    self._show_message("Unexpected Error", f"An unexpected error occurred during deletion: {e}",
+                                       "critical")
 
     def handle_search_query(self, query: str):
         self._current_search_term = query.strip().lower()
