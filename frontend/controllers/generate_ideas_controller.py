@@ -25,11 +25,11 @@ class ChatGPTWorker(QObject):
 
 
 class GenerateIdeasController(QObject):
-    def __init__(self, components: List[Component], openai_model_name: str, parent=None):
+    def __init__(self, components: List[Component], openai_model_name: str, api_key: str, parent=None):
         super().__init__()
         self.components = components
         self.view = GenerateIdeasDialog(parent)
-        self.chatgpt_service = ChatGPTService(config_model_name=openai_model_name)
+        self.chatgpt_service = ChatGPTService(config_model_name=openai_model_name, api_key=api_key)
 
         self._worker_thread = None
         self._worker = None

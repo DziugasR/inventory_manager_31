@@ -1,9 +1,39 @@
 import sys
 import os
-from dotenv import load_dotenv
 import configparser
-
 from PyQt5.QtWidgets import QApplication, QMessageBox, QStyleFactory
+
+# --- This is our new, reliable function to read the .env file ---
+def load_env_manually(path):
+    """
+    Manually reads a .env file and returns a dictionary of variables.
+    This has no dependencies and is reliable in a PyInstaller bundle.
+    """
+    variables = {}
+    if not os.path.exists(path):
+        print(f"WARNING: Manual .env loader could not find file at: {path}")
+        return variables
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                # Ignore comments and empty lines
+                if line and not line.startswith('#'):
+                    # Find the first '=' to handle values that might contain '='
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        key = key.strip()
+                        value = value.strip()
+                        # Remove surrounding quotes if they exist
+                        if (value.startswith('"') and value.endswith('"')) or \
+                           (value.startswith("'") and value.endswith("'")):
+                            value = value[1:-1]
+                        variables[key] = value
+    except Exception as e:
+        print(f"CRITICAL: Failed to manually read .env file: {e}")
+    return variables
+# --------------------------------------------------------------------
+
 
 if getattr(sys, 'frozen', False):
     application_path = os.path.dirname(os.path.abspath(sys.argv[0]))
@@ -11,10 +41,11 @@ else:
     application_path = os.path.dirname(os.path.abspath(__file__))
 
 env_path = os.path.join(application_path, '.env')
-print(f"DEBUG: main.py - Looking for .env at: {env_path}")
-loaded_env = load_dotenv(dotenv_path=env_path, override=True, verbose=True)
-if not loaded_env:
-    print(f"WARNING: main.py - .env file not found or empty at {env_path}")
+print(f"DEBUG: main.py - Manually looking for .env at: {env_path}")
+
+# --- We now call our new function instead of load_dotenv ---
+env_variables = load_env_manually(env_path)
+# -----------------------------------------------------------
 
 config = configparser.ConfigParser()
 config_path = os.path.join(application_path, 'config.ini')
@@ -84,9 +115,14 @@ print(f"INFO: main.py - Final Config DB path: {absolute_config_db_path}")
 print(f"INFO: main.py - Final Inventory DB path: {absolute_inventory_db_path}")
 
 def main():
-    api_key_check = os.getenv("OPENAI_API_KEY")
-    if not api_key_check:
-        print("CRITICAL WARNING: OPENAI_API_KEY not found in environment or .env file!")
+    # --- We get the key from our dictionary, not the environment ---
+    api_key_variable = env_variables.get("OPENAI_API_KEY")
+    # As a fallback, check the actual environment too
+    if not api_key_variable:
+        api_key_variable = os.getenv("OPENAI_API_KEY")
+
+    if not api_key_variable:
+        print("CRITICAL WARNING: OPENAI_API_KEY not found in .env file or environment!")
 
     from backend import database
     try:
@@ -130,7 +166,13 @@ def main():
         print(f"Available styles: {available_styles}")
 
     view = InventoryUI()
-    controller = MainController(view, openai_model=openai_model, app_path=application_path)
+    # This part remains the same from our last working attempt
+    controller = MainController(
+        view,
+        openai_model=openai_model,
+        app_path=application_path,
+        api_key=api_key_variable
+    )
     controller.show_view()
     sys.exit(app.exec_())
 

@@ -4,8 +4,8 @@ from typing import Optional
 
 
 class ChatGPTService:
-    def __init__(self, config_model_name: Optional[str] = None):
-        self.api_key = os.getenv("OPENAI_API_KEY")
+    def __init__(self, config_model_name: Optional[str] = None, api_key: Optional[str] = None):
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
 
         if not self.api_key:
             print("WARNING: ChatGPTService initialized, but OPENAI_API_KEY is missing!")

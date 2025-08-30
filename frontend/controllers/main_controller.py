@@ -26,10 +26,11 @@ from backend.exceptions import (
 
 
 class MainController(QObject):
-    def __init__(self, view: InventoryUI, openai_model: str, app_path: str):
+    def __init__(self, view: InventoryUI, openai_model: str, app_path: str, api_key: str):
         super().__init__()
         self._view = view
         self._openai_model = openai_model
+        self._api_key = api_key
         self._app_path = app_path
         self._current_search_term = ""
         self._import_export_controller = ImportExportController(self._view, self)
@@ -379,7 +380,12 @@ class MainController(QObject):
                                level="warning")
             return
 
-        idea_controller = GenerateIdeasController(selected_components, self._openai_model, self._view)
+        idea_controller = GenerateIdeasController(
+            selected_components,
+            self._openai_model,
+            api_key=self._api_key,
+            parent=self._view
+        )
         idea_controller.show()
 
     def open_link_in_browser(self, url: QUrl):
