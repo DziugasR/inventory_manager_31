@@ -1,0 +1,107 @@
+/* --- A complete, clean light theme --- */
+QWidget {
+    background-color: #f0f0f0;
+    color: #000000;
+}
+QMainWindow, QDialog {
+    background-color: #f0f0f0;
+}
+QTableWidget {
+    background-color: #ffffff;
+    gridline-color: #d0d0d0;
+    selection-background-color: #a8d8ff; /* A slightly richer blue for selection */
+    selection-color: #000000;
+}
+QHeaderView::section {
+    background-color: #e0e0e0;
+    padding: 4px;
+    border: 1px solid #d0d0d0;
+}
+QPushButton {
+    background-color: #e1e1e1;
+    border: 1px solid #adadad;
+    padding: 5px 15px;
+    border-radius: 3px;
+}
+QPushButton:hover {
+    background-color: #cacaca;
+}
+QPushButton:pressed {
+    background-color: #adadad;
+}
+QLineEdit, QComboBox {
+    padding: 2px;
+    border: 1px solid #bdbebf;
+    border-radius: 3px;
+    background-color: #ffffff;
+}
+QComboBox QAbstractItemView {
+    background-color: #ffffff;
+    selection-background-color: #a8d8ff;
+    selection-color: #000000;
+}
+QGroupBox {
+    border: 1px solid #c0c0c0;
+    border-radius: 5px;
+    margin-top: 1ex;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 3px;
+}
+QMenuBar {
+    background-color: #e0e0e0;
+}
+QMenuBar::item {
+    background-color: transparent;
+}
+QMenuBar::item:selected {
+    background-color: #a8d8ff; /* Hover/selection for top menu bar */
+}
+QMenu {
+    background-color: #f0f0f0;
+    border: 1px solid #c0c0c0;
+}
+QMenu::item:selected {
+    background-color: #a8d8ff; /* Hover/selection for dropdown menu items */
+}
+
+/* --- Custom Button Styles --- */
+#addButton {
+    background-color: #d4edda; /* Light green */
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+#addButton:hover {
+    background-color: #c3e6cb;
+}
+#removeButton {
+    background-color: #f8d7da; /* Light red */
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+#removeButton:hover {
+    background-color: #f5c6cb;
+}
+#generateButton {
+    background-color: #d1ecf1; /* Light blue */
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+}
+#generateButton:hover {
+    background-color: #bee5eb;
+}
+#exportButton, #importButton {
+    background-color: #e2e3e5; /* Light grey */
+    border: 1px solid #d6d8db;
+    color: #383d41;
+}
+#exportButton:hover, #importButton:hover {
+    background-color: #d6d8db;
+}
+#removeButton:disabled, #generateButton:disabled {
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+    color: #6c757d;
+}
