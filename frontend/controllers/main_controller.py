@@ -52,11 +52,13 @@ class MainController(QObject):
         self._view.import_requested.connect(self._import_export_controller.handle_import_request)
         self._view.link_clicked.connect(self.open_link_in_browser)
         self._view.search_text_changed.connect(self.handle_search_query)
+        self._view.selection_changed.connect(self.on_selection_changed)
 
         self._view.menu_bar_handler.new_inventory_action.triggered.connect(self.handle_new_inventory)
         self._view.menu_bar_handler.delete_inventory_action.triggered.connect(self.handle_delete_inventory)
         self._view.menu_bar_handler.manage_types_action.triggered.connect(self.handle_manage_types)
         self._view.menu_bar_handler.options_action.triggered.connect(self.handle_options)
+        self._view.menu_bar_handler.toggle_select_action.triggered.connect(self.handle_toggle_select)
 
     def _load_initial_data(self):
         try:
@@ -80,6 +82,17 @@ class MainController(QObject):
             return
 
         self._view._adjust_window_width()
+
+    def on_selection_changed(self, has_selection: bool):
+        """Updates the menu bar text based on the selection state."""
+        self._view.menu_bar_handler.update_toggle_action_text(has_selection)
+
+    def handle_toggle_select(self):
+        """Handles the toggle action for selecting/deselecting all items."""
+        if self._view.get_checked_ids():
+            self._view.deselect_all_items()
+        else:
+            self._view.select_all_items()
 
     def _update_inventory_menu(self):
         menu = self._view.menu_bar_handler.open_inventory_menu
@@ -202,8 +215,8 @@ class MainController(QObject):
                 filtered_components = [
                     c for c in components if
                     search_term in str(c.part_number or "").lower() or
-                    search_term in str(c.component_type or "").lower() or
-                    search_term in str(c.value or "").lower()
+                    search_term in str(c.component_type or "").lower()
+                    or                    search_term in str(c.value or "").lower()
                 ]
                 self._view.display_data(filtered_components)
             else:

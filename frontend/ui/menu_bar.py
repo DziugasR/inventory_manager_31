@@ -35,11 +35,19 @@ class AppMenuBar:
         self.delete_inventory_action = None
         self.manage_types_action = None
         self.options_action = None
+        self.toggle_select_action = None
         self._create_menu_bar()
 
     def set_inventory_name(self, name: str):
         if self.table_name_label:
             self.table_name_label.setText(name)
+
+    def update_toggle_action_text(self, has_selection: bool):
+        if self.toggle_select_action:
+            if has_selection:
+                self.toggle_select_action.setText("Deselect All Items")
+            else:
+                self.toggle_select_action.setText("Select All Items")
 
     def _create_menu_bar(self):
         menu_bar = self.parent.menuBar()
@@ -65,6 +73,9 @@ class AppMenuBar:
         tools_menu.addAction(self.options_action)
         self.manage_types_action = QAction("Manage Component Types...", self.parent)
         tools_menu.addAction(self.manage_types_action)
+        tools_menu.addSeparator()
+        self.toggle_select_action = QAction("Select All Items", self.parent)
+        tools_menu.addAction(self.toggle_select_action)
 
         help_menu = menu_bar.addMenu("&Help")
 

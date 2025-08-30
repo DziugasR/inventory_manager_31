@@ -22,6 +22,7 @@ class InventoryUI(QMainWindow):
     load_data_requested = pyqtSignal()
     link_clicked = pyqtSignal(QUrl)
     search_text_changed = pyqtSignal(str)
+    selection_changed = pyqtSignal(bool)
 
     PART_NUMBER_COL = 0
     TYPE_COL = 1
@@ -115,6 +116,24 @@ class InventoryUI(QMainWindow):
         self.table.cellClicked.connect(self._handle_cell_click)
         self.search_bar.textChanged.connect(self.search_text_changed.emit)
 
+    def select_all_items(self):
+        """Checks all visible checkboxes in the table."""
+        for row in range(self.table.rowCount()):
+            widget = self.table.cellWidget(row, self.CHECKBOX_COL)
+            if isinstance(widget, QWidget):
+                checkbox = widget.findChild(QCheckBox)
+                if checkbox:
+                    checkbox.setChecked(True)
+
+    def deselect_all_items(self):
+        """Unchecks all visible checkboxes in the table."""
+        for row in range(self.table.rowCount()):
+            widget = self.table.cellWidget(row, self.CHECKBOX_COL)
+            if isinstance(widget, QWidget):
+                checkbox = widget.findChild(QCheckBox)
+                if checkbox:
+                    checkbox.setChecked(False)
+
     def _adjust_window_width(self):
         total_width = self.table.verticalHeader().width()
         for i in range(self.table.columnCount()):
@@ -189,6 +208,7 @@ class InventoryUI(QMainWindow):
         enable = len(checked_items) > 0
         self.remove_button.setEnabled(enable)
         self.generate_ideas_button.setEnabled(enable)
+        self.selection_changed.emit(enable)
 
     def get_selected_id(self) -> uuid.UUID | None:
         selected_row = self.table.currentRow()
