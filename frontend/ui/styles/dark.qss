@@ -19,10 +19,12 @@ QHeaderView::section {
     border: 1px solid #3c3f41;
 }
 QPushButton {
+    /* This is the general style for any buttons WITHOUT a specific ID */
     background-color: #4f5254;
     border: 1px solid #646464;
     padding: 5px 15px;
     border-radius: 3px;
+    color: #dcdcdc; /* Added for consistency */
 }
 QPushButton:hover {
     background-color: #5a5d5f;
@@ -92,41 +94,139 @@ QTableWidget QCheckBox::indicator:disabled {
     border: 1px solid #4a4a4a;
 }
 
-/* --- Custom Button Styles --- */
-#addButton {
-    background-color: #1c4a2a; /* Dark green */
-    border: 1px solid #2a683d;
-    color: #d1e7dd;
+/* --- REFACTORED: New Custom Button Styles --- */
+QPushButton#addButton {
+    font-size: 13px;
+    font-weight: bold;
+    color: white;
+    padding: 6px 10px;
+    min-height: 30px;
+    border-radius: 4px;
+    background-color: #5cb85c; /* Solid Green */
+    border: 1px solid #4cae4c;
+    outline: none;
 }
-#addButton:hover {
-    background-color: #2a683d;
+QPushButton#addButton:hover {
+    background-color: #4cae4c;
+    border-color: #398439;
 }
-#removeButton {
-    background-color: #5a2d2f; /* Dark red */
-    border: 1px solid #844043;
-    color: #f8d7da;
+QPushButton#addButton:pressed {
+    background-color: #449d44;
+    border-color: #398439;
 }
-#removeButton:hover {
-    background-color: #844043;
+QPushButton#addButton:disabled {
+    background-color: #B0B0B0;
+    border: 1px solid #999999;
+    color: #707070;
 }
-#generateButton {
-    background-color: #1c4155; /* Dark blue */
-    border: 1px solid #2c627f;
-    color: #d1ecf1;
+
+QPushButton#removeButton {
+    font-size: 13px; font-weight: bold; color: white;
+    padding: 6px 10px;
+    min-height: 30px;
+    border-radius: 4px;
+    background-color: #d9534f; /* Solid Red */
+    border: 1px solid #d43f3a;
+    outline: none;
 }
-#generateButton:hover {
-    background-color: #2c627f;
+QPushButton#removeButton:hover {
+    background-color: #c9302c;
+    border-color: #ac2925;
 }
-#exportButton, #importButton {
-    background-color: #4f5254; /* Standard dark button */
-    border: 1px solid #646464;
-    color: #dcdcdc;
+QPushButton#removeButton:pressed {
+    background-color: #ac2925;
+    border-color: #8b221f;
 }
-#exportButton:hover, #importButton:hover {
-    background-color: #5a5d5f;
+QPushButton#removeButton:disabled {
+    background-color: #B0B0B0;
+    border: 1px solid #999999;
+    color: #707070;
 }
-#removeButton:disabled, #generateButton:disabled {
-    background-color: #3a3a3a;
-    border: 1px solid #4a4a4a;
-    color: #8a8a8a;
+
+QPushButton#generateButton {
+    font-size: 13px; font-weight: bold; color: white;
+    padding: 6px 10px;
+    min-height: 30px;
+    border-radius: 4px;
+    background-color: #337ab7; /* Solid Blue */
+    border: 1px solid #2e6da4;
+    outline: none;
+}
+QPushButton#generateButton:hover {
+    background-color: #286090;
+    border-color: #204d74;
+}
+QPushButton#generateButton:pressed {
+    background-color: #204d74;
+    border-color: #1a4161;
+}
+QPushButton#generateButton:disabled {
+    background-color: #B0B0B0;
+    border: 1px solid #999999;
+    color: #707070;
+}
+
+QPushButton#importButton {
+    font-size: 13px; font-weight: bold; color: white;
+    padding: 6px 10px;
+    min-height: 30px;
+    border-radius: 4px;
+    background-color: #b466c2; /* Solid Purple */
+    border: 1px solid #a155ae;
+    outline: none;
+}
+QPushButton#importButton:hover {
+    background-color: #944fa3;
+    border-color: #803f8f;
+}
+QPushButton#importButton:pressed {
+    background-color: #803f8f;
+    border-color: #6b3279;
+}
+QPushButton#importButton:disabled {
+    background-color: #B0B0B0;
+    border: 1px solid #999999;
+    color: #707070;
+}
+
+QPushButton#exportButton {
+    font-size: 13px; font-weight: bold; color: white;
+    padding: 6px 10px;
+    min-height: 30px;
+    border-radius: 4px;
+    background-color: #f0ad4e; /* Solid Orange */
+    border: 1px solid #eea236;
+    outline: none;
+}
+QPushButton#exportButton:hover {
+    background-color: #ec971f;
+    border-color: #d58512;
+}
+QPushButton#exportButton:pressed {
+    background-color: #d58512;
+    border-color: #b06d0f;
+}
+QPushButton#exportButton:disabled {
+    background-color: #B0B0B0;
+    border: 1px solid #999999;
+    color: #707070;
+}
+
+/* For the button in the Generate Ideas dialog */
+QPushButton#generateIdeasButton {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    background-color: #5cb85c;
+    border: 1px solid #4cae4c;
+    border-radius: 5px;
+    padding: 10px;
+}
+QPushButton#generateIdeasButton:hover {
+    background-color: #4cae4c;
+    border-color: #398439;
+}
+QPushButton#generateIdeasButton:pressed {
+    background-color: #449d44;
+    border: 1px solid #398439;
 }

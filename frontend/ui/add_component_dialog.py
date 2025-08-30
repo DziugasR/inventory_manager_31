@@ -3,57 +3,43 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox, QLabel, QVBoxLayout, QMessageBox, QPushButton, QHBoxLayout
 )
 from PyQt5.QtCore import pyqtSignal, QObject
-
 from backend.type_manager import type_manager
 from backend.exceptions import InvalidInputError
 
-
 class AddComponentDialog(QDialog):
     component_data_collected = pyqtSignal(dict)
-    manage_types_requested = pyqtSignal(QObject)  # Signal now emits an object
+    manage_types_requested = pyqtSignal(QObject)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Add New Component")
-
         self.layout = QVBoxLayout(self)
         self.form_layout = QFormLayout()
-
-        # --- Type ComboBox and Manage Button ---
         type_layout = QHBoxLayout()
         self.type_input = QComboBox(self)
         self.type_input.addItems(type_manager.get_all_ui_names())
         self.type_input.currentTextChanged.connect(self.update_fields)
-
         self.manage_types_button = QPushButton("Manage Types...")
-        # Emit self when clicked
         self.manage_types_button.clicked.connect(lambda: self.manage_types_requested.emit(self))
-
         type_layout.addWidget(self.type_input)
         type_layout.addWidget(self.manage_types_button)
         self.form_layout.addRow("Type:", type_layout)
-        # ----------------------------------------
-
         self.part_number_input = QLineEdit(self)
         self.form_layout.addRow("Part Number:", self.part_number_input)
-
         self.dynamic_fields = {}
-
         self.quantity_input = QSpinBox(self)
         self.quantity_input.setRange(1, 10000)
         self.quantity_input.setValue(1)
         self.form_layout.addRow("Quantity:", self.quantity_input)
-
         self.purchase_link_input = QLineEdit(self)
         self.form_layout.addRow("Purchase Link:", self.purchase_link_input)
-
         self.datasheet_link_input = QLineEdit(self)
         self.form_layout.addRow("Datasheet Link:", self.datasheet_link_input)
-
+        self.location_input = QLineEdit()
+        self.location_input.setPlaceholderText("e.g., Drawer A5, Resistor Box #2")
+        self.form_layout.addRow(QLabel("Location:"), self.location_input)
         self._create_dynamic_fields()
-
         self.layout.addLayout(self.form_layout)
-
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.button_box.accepted.connect(self.handle_accept)
         self.button_box.rejected.connect(self.reject)
@@ -142,16 +128,9 @@ class AddComponentDialog(QDialog):
         backend_type_id = type_manager.get_backend_id(selected_ui_type)
 
         if backend_type_id is None:
-            QMessageBox.critical(self, "Internal Error",
-                                 f"Could not map component type '{selected_ui_type}' to a backend identifier.")
             raise InvalidInputError(f"Internal error mapping type: {selected_ui_type}")
 
-        dynamic_values = []
-        for field_name, (_, input_field) in self.dynamic_fields.items():
-            value = input_field.text().strip()
-            if value:
-                dynamic_values.append(f"{field_name}: {value}")
-
+        dynamic_values = [f"{fn}: {fi.text().strip()}" for fn, (_, fi) in self.dynamic_fields.items() if fi.text().strip()]
         value_str = ", ".join(dynamic_values)
 
         return {
@@ -160,7 +139,8 @@ class AddComponentDialog(QDialog):
             'value': value_str,
             'quantity': self.quantity_input.value(),
             'purchase_link': self.purchase_link_input.text().strip(),
-            'datasheet_link': self.datasheet_link_input.text().strip()
+            'datasheet_link': self.datasheet_link_input.text().strip(),
+            'location': self.location_input.text().strip()
         }
 
     def handle_accept(self):

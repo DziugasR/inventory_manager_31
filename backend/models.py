@@ -1,11 +1,9 @@
 import uuid
-
 from sqlalchemy import Column, Integer, String, UUID
 from sqlalchemy.ext.declarative import declarative_base
 from abc import abstractmethod
 
 Base = declarative_base()
-
 
 class Component(Base):
     __tablename__ = "components"
@@ -17,6 +15,7 @@ class Component(Base):
     quantity = Column(Integer, nullable=False)
     purchase_link = Column(String, nullable=True)
     datasheet_link = Column(String, nullable=True)
+    location = Column(String, nullable=True)
 
     __mapper_args__ = {
         "polymorphic_on": component_type,
@@ -27,13 +26,10 @@ class Component(Base):
     def get_specifications(self):
         pass
 
-
 def create_component_class(class_name, polymorphic_id, spec_format_string):
     """Dynamically creates a Component subclass."""
 
     def generated_get_specifications(self):
-        # This is a simplified placeholder. The main purpose is to have the method exist.
-        # The 'value' field will store the fully formatted string of all properties.
         return f"{self.value}"
 
     class_attributes = {
@@ -41,11 +37,8 @@ def create_component_class(class_name, polymorphic_id, spec_format_string):
         "get_specifications": generated_get_specifications
     }
 
-    # Create a unique internal class name to avoid conflicts if this function is called multiple times
-    # for types with the same UI name (e.g. from different sources).
     internal_class_name = f"{class_name}_{polymorphic_id}"
 
-    # Check if a class with this name already exists in the scope of the Base's registry
     if internal_class_name in globals() or hasattr(Base, internal_class_name):
         return globals().get(internal_class_name) or getattr(Base, internal_class_name)
 

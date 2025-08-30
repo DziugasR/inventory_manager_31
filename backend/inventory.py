@@ -1,11 +1,8 @@
 import uuid
-
 from backend.models import Component
 from backend.database import get_session
 from backend.component_factory import ComponentFactory
-
 import backend.exceptions
-
 
 def add_component(
         part_number: str,
@@ -13,7 +10,8 @@ def add_component(
         value: str,
         quantity: int,
         purchase_link: str | None,
-        datasheet_link: str | None
+        datasheet_link: str | None,
+        location: str | None
 ) -> Component | None:
     if not part_number:
         raise backend.exceptions.InvalidInputError("Part number cannot be empty.")
@@ -28,7 +26,8 @@ def add_component(
             value=value,
             quantity=quantity,
             purchase_link=purchase_link,
-            datasheet_link=datasheet_link
+            datasheet_link=datasheet_link,
+            location=location
         )
         session.add(component)
         session.commit()
@@ -40,7 +39,6 @@ def add_component(
         raise backend.exceptions.DatabaseError(f"Database error during add: {e}") from e
     finally:
         session.close()
-
 
 def remove_component_quantity(component_id: uuid.UUID, quantity: int) -> Component | None:
     if not isinstance(quantity, int) or quantity <= 0:
@@ -54,18 +52,12 @@ def remove_component_quantity(component_id: uuid.UUID, quantity: int) -> Compone
 
         if component.quantity < quantity:
             raise backend.exceptions.StockError(
-                f"Not enough stock for component {component.part_number} (ID: {component_id}). "
-                f"Available: {component.quantity}, Tried to remove: {quantity}")
+                f"Not enough stock for {component.part_number}. Available: {component.quantity}, Tried to remove: {quantity}")
 
         component.quantity -= quantity
         updated_component = component
-        if component.quantity == 0:
-            session.delete(component)
-            session.commit()
-            return None
-        else:
-            session.commit()
-            return updated_component
+        session.commit()
+        return updated_component
     except Exception as e:
         session.rollback()
         if not isinstance(e, backend.exceptions.ComponentError):
@@ -74,12 +66,9 @@ def remove_component_quantity(component_id: uuid.UUID, quantity: int) -> Compone
     finally:
         session.close()
 
-
 def delete_components_by_type(backend_id: str) -> int:
-    """Deletes all components matching a specific type and returns the count."""
     session = get_session()
     try:
-        # The query returns the number of rows deleted.
         num_deleted = session.query(Component).filter_by(component_type=backend_id).delete(synchronize_session=False)
         session.commit()
         print(f"INFO: Deleted {num_deleted} components of type '{backend_id}'.")
@@ -90,71 +79,45 @@ def delete_components_by_type(backend_id: str) -> int:
     finally:
         session.close()
 
+def update_component(component_id: uuid.UUID, data: dict) -> Component:
+    """Updates a component's attributes from a dictionary of data."""
+    session = get_session()
+    try:
+        component = session.query(Component).filter_by(id=component_id).first()
+        if not component:
+            raise backend.exceptions.ComponentNotFoundError(f"Component with ID {component_id} not found.")
+
+        for key, value in data.items():
+            if hasattr(component, key):
+                setattr(component, key, value)
+            else:
+                print(f"WARNING: Tried to update non-existent attribute '{key}'")
+
+        session.commit()
+        session.refresh(component)
+        return component
+    except Exception as e:
+        session.rollback()
+        if isinstance(e, backend.exceptions.ComponentError):
+            raise
+        raise backend.exceptions.DatabaseError(f"Error while updating component: {e}") from e
+    finally:
+        session.close()
 
 def get_component_by_id(component_id: uuid.UUID) -> Component | None:
     session = get_session()
     try:
-        component = session.query(Component).filter_by(id=component_id).first()
-        return component
+        return session.query(Component).filter_by(id=component_id).first()
     except Exception as e:
-        raise backend.exceptions.DatabaseError(f"Error while fetching component by id {component_id}: {e}") from e
+        raise backend.exceptions.DatabaseError(f"Error fetching component by id {component_id}: {e}") from e
     finally:
         session.close()
-
 
 def get_all_components() -> list[Component] | None:
     session = get_session()
     try:
         return session.query(Component).order_by(Component.part_number).all()
     except Exception as e:
-        raise backend.exceptions.DatabaseError(f"Error while fetching all components: {e}") from e
-    finally:
-        session.close()
-
-
-def update_component_quantity(component_id: uuid.UUID, new_quantity: int) -> Component | None:
-    if not isinstance(new_quantity, int) or new_quantity < 0:
-        raise backend.exceptions.InvalidQuantityError("Quantity must be a non-negative integer")
-
-    session = get_session()
-    try:
-        component = session.query(Component).filter_by(id=component_id).first()
-        if not component:
-            raise backend.exceptions.ComponentNotFoundError(f"Component with ID {component_id} not found")
-
-        component.quantity = new_quantity
-        session.commit()
-        return component
-    except Exception as e:
-        session.rollback()
-        if not isinstance(e, backend.exceptions.ComponentError):
-            raise backend.exceptions.DatabaseError(f"Error while updating component quantity: {e}") from e
-        raise
-    finally:
-        session.close()
-
-
-def select_multiple_components(component_ids: list[uuid.UUID]) -> list[Component] | None:
-    if not component_ids:
-        return []
-
-    session = get_session()
-    try:
-        selected_components = session.query(Component) \
-            .filter(Component.id.in_(component_ids)) \
-            .all()
-        return selected_components
-    except Exception as e:
-        raise backend.exceptions.DatabaseError(f"Error selecting multiple components: {e}") from e
-    finally:
-        session.close()
-
-
-def get_components_by_part_number(part_number: str) -> list[Component] | None:
-    session = get_session()
-    try:
-        return session.query(Component).filter_by(part_number=part_number).all()
-    except Exception as e:
-        raise backend.exceptions.DatabaseError(f"Error fetching components by part number {part_number}: {e}") from e
+        raise backend.exceptions.DatabaseError(f"Error fetching all components: {e}") from e
     finally:
         session.close()
