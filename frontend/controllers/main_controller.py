@@ -64,15 +64,21 @@ class MainController(QObject):
             if not self._inventories:
                 raise DatabaseError("No inventories found in the configuration database.")
 
-            self._active_inventory = self._inventories[0]
-            self._update_inventory_menu()
-            self._update_window_title()
+            # --- START: MODIFIED ---
+            # Instead of manually setting state, call the function that does it all correctly.
+            self.switch_inventory(self._inventories[0])
+            # --- END: MODIFIED ---
 
         except DatabaseError as e:
             self._show_message("Fatal Error", f"Could not load inventory list: {e}", "critical")
+            # We exit here because the switch_inventory call will fail if there are no inventories.
+            # And even if it didn't, there's nothing to show. The original code would have crashed later.
+            return
+        except Exception as e:
+            # General catch-all for other potential startup issues
+            self._show_message("Fatal Startup Error", f"An unexpected error occurred during startup: {e}", "critical")
             return
 
-        self.load_inventory_data()
         self._view._adjust_window_width()
 
     def _update_inventory_menu(self):
