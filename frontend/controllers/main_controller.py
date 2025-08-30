@@ -17,6 +17,7 @@ from backend import database, inventory_manager, settings_manager, inventory
 from backend.models_custom import Inventory
 from backend.inventory import get_all_components, add_component, remove_component_quantity, get_component_by_id
 from backend.exceptions import *
+from backend.test_data_generator import generate_random_components
 
 
 class MainController(QObject):
@@ -56,6 +57,7 @@ class MainController(QObject):
         self._view.menu_bar_handler.manage_types_action.triggered.connect(self.handle_manage_types)
         self._view.menu_bar_handler.options_action.triggered.connect(self.handle_options)
         self._view.menu_bar_handler.toggle_select_action.triggered.connect(self.handle_toggle_select)
+        self._view.menu_bar_handler.add_random_action.triggered.connect(self.handle_add_random_components)
 
     def _load_initial_data(self):
         try:
@@ -286,6 +288,35 @@ class MainController(QObject):
             level, QMessageBox.NoIcon)
         msg_box.setIcon(icon)
         msg_box.exec_()
+
+    def handle_add_random_components(self):
+        """Prompts user and adds a specified number of random components."""
+        num, ok = QInputDialog.getInt(
+            self._view,
+            "Add Random Components",
+            "How many components would you like to add?",
+            20,  # Default value
+            1,  # Minimum value
+            1000  # Maximum value
+        )
+
+        if ok and num > 0:
+            try:
+                self._show_message("Processing...", f"Generating and adding {num} random components...", "info")
+
+                # 1. Generate the data
+                random_data_list = generate_random_components(num)
+
+                # 2. Add each component to the database
+                for component_data in random_data_list:
+                    inventory.add_component(**component_data)
+
+                # 3. Refresh the UI and show success
+                self.load_inventory_data()
+                self._show_message("Success", f"Successfully added {num} random components to the inventory.", "info")
+
+            except Exception as e:
+                self._show_message("Error", f"An error occurred while adding random components:\n{e}", "critical")
 
     def show_view(self):
         self._view.show()

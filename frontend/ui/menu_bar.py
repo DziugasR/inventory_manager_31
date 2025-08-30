@@ -36,6 +36,7 @@ class AppMenuBar:
         self.manage_types_action = None
         self.options_action = None
         self.toggle_select_action = None
+        self.add_random_action = None
         self._create_menu_bar()
 
     def set_inventory_name(self, name: str):
@@ -76,6 +77,10 @@ class AppMenuBar:
         tools_menu.addSeparator()
         self.toggle_select_action = QAction("Select All Items", self.parent)
         tools_menu.addAction(self.toggle_select_action)
+
+        tools_menu.addSeparator()  # A separator makes it clear these are different tools
+        self.add_random_action = QAction("Add Random Components...", self.parent)
+        tools_menu.addAction(self.add_random_action)
 
         help_menu = menu_bar.addMenu("&Help")
 
