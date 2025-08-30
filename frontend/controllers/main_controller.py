@@ -167,21 +167,13 @@ class MainController(QObject):
             self._show_message("Action Not Allowed", "You cannot delete the last remaining inventory.", "warning")
             return
 
-        deletable_inventories = [inv for inv in self._inventories if inv.id != self._active_inventory.id]
-
-        if not deletable_inventories:
-            self._show_message("Action Not Allowed",
-                               "You cannot delete the currently active inventory.\nPlease switch to another inventory first.",
-                               "warning")
-            return
-
-        inventory_names = [inv.name for inv in deletable_inventories]
+        inventory_names = [inv.name for inv in self._inventories]
 
         item, ok = QInputDialog.getItem(self._view, "Delete Inventory", "Select an inventory to delete:",
                                         inventory_names, 0, False)
 
         if ok and item:
-            inventory_to_delete = next((inv for inv in deletable_inventories if inv.name == item), None)
+            inventory_to_delete = next((inv for inv in self._inventories if inv.name == item), None)
             if not inventory_to_delete:
                 self._show_message("Error", "Could not find the selected inventory to delete.", "critical")
                 return
@@ -192,10 +184,19 @@ class MainController(QObject):
 
             if reply == QMessageBox.Yes:
                 try:
+                    is_active_inventory = self._active_inventory and self._active_inventory.id == inventory_to_delete.id
+
                     inventory_manager.delete_inventory(inventory_to_delete.id, self._app_path)
                     self._inventories = [inv for inv in self._inventories if inv.id != inventory_to_delete.id]
-                    self._update_inventory_menu()
                     self._show_message("Success", f"Inventory '{inventory_to_delete.name}' has been deleted.", "info")
+
+                    if is_active_inventory:
+                        print("INFO: Active inventory was deleted. Switching to a new default.")
+                        new_active_inventory = self._inventories[0]
+                        self.switch_inventory(new_active_inventory)
+                    else:
+                        self._update_inventory_menu()
+
                 except (ComponentNotFoundError, DatabaseError) as e:
                     self._show_message("Deletion Error", str(e), "critical")
                 except Exception as e:
