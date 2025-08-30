@@ -15,11 +15,11 @@ def construct_generation_prompt(components, selected_quantities):
     if not component_details:
         return None
 
-    prompt = """You are an electronics lecturer creating
-     THREE extremely concise project idea using the components listed if needed you can add more components.\n\n"""
+    prompt = """You are an electronics engineer creating
+     FIVE extremely concise project idea using the components listed if needed you can add more components.\n\n"""
 
-    prompt += """Generate THREE specific project using these components and quantities. 
-    Projects including parts not selected also could be mentioned but must be useful, 
+    prompt += """Generate FIVE specific project using these components and quantities. 
+    Projects including parts not selected also could be mentioned but must be USEFUL or COOL/INTERESTING, 
     using most of the mentioned components.\n\n"""
 
     prompt += "Available Components:\n"
