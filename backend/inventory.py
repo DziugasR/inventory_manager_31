@@ -75,6 +75,22 @@ def remove_component_quantity(component_id: uuid.UUID, quantity: int) -> Compone
         session.close()
 
 
+def delete_components_by_type(backend_id: str) -> int:
+    """Deletes all components matching a specific type and returns the count."""
+    session = get_session()
+    try:
+        # The query returns the number of rows deleted.
+        num_deleted = session.query(Component).filter_by(component_type=backend_id).delete(synchronize_session=False)
+        session.commit()
+        print(f"INFO: Deleted {num_deleted} components of type '{backend_id}'.")
+        return num_deleted
+    except Exception as e:
+        session.rollback()
+        raise backend.exceptions.DatabaseError(f"Error deleting components by type: {e}") from e
+    finally:
+        session.close()
+
+
 def get_component_by_id(component_id: uuid.UUID) -> Component | None:
     session = get_session()
     try:

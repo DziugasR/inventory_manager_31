@@ -1,10 +1,13 @@
 import json
 import re
-from .database import get_config_session
+import os
+from .database import get_config_session, switch_inventory_db, inventory_engine
 from .models import Component, create_component_class
 from .models_custom import ComponentTypeDefinition
 from .component_constants import UI_TO_BACKEND_TYPE_MAP
 from .component_factory import ComponentFactory
+from . import inventory
+from . import inventory_manager
 
 
 class TypeManager:
@@ -134,6 +137,57 @@ class TypeManager:
             session.rollback()
             print(f"ERROR: Failed to add custom type '{ui_name}': {e}")
             return False, str(e)
+        finally:
+            session.close()
+
+    def delete_custom_type(self, ui_name: str, app_path: str):
+        session = get_config_session()
+        original_db_url = None
+        try:
+            custom_type = session.query(ComponentTypeDefinition).filter_by(ui_name=ui_name).first()
+            if not custom_type:
+                raise ValueError(f"No custom type named '{ui_name}' found to delete.")
+
+            backend_id_to_delete = custom_type.backend_id
+            all_inventories = inventory_manager.get_all_inventories()
+            original_db_url = str(inventory_engine.url)
+            total_deleted_count = 0
+
+            print(f"INFO: Deleting components of type '{backend_id_to_delete}' from ALL inventories...")
+            for inv in all_inventories:
+                db_path = inv.db_path if os.path.isabs(inv.db_path) else os.path.join(app_path, inv.db_path)
+                db_url = f"sqlite:///{db_path}"
+                switch_inventory_db(db_url)
+                num_deleted = inventory.delete_components_by_type(backend_id_to_delete)
+                total_deleted_count += num_deleted
+
+            session.delete(custom_type)
+            session.commit()
+            print(f"INFO: Successfully deleted custom type definition '{ui_name}'.")
+
+            switch_inventory_db(original_db_url)
+            self.load_types()
+
+            msg = f"Deleted type '{ui_name}' and its {total_deleted_count} components from all inventories."
+            return True, msg
+        except Exception as e:
+            session.rollback()
+            if original_db_url and str(inventory_engine.url) != original_db_url:
+                try:
+                    switch_inventory_db(original_db_url)
+                    print("INFO: Restored original DB connection after an error.")
+                except Exception as restore_e:
+                    print(f"CRITICAL: Failed to restore original DB after error: {restore_e}")
+            print(f"ERROR: Failed to delete custom type '{ui_name}': {e}")
+            return False, str(e)
+        finally:
+            session.close()
+
+    def get_all_custom_ui_names(self):
+        session = get_config_session()
+        try:
+            custom_types = session.query(ComponentTypeDefinition).order_by(ComponentTypeDefinition.ui_name).all()
+            return [t.ui_name for t in custom_types]
         finally:
             session.close()
 

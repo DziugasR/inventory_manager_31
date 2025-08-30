@@ -234,15 +234,17 @@ class MainController(QObject):
         dialog.exec_()
 
     def open_manage_types_dialog(self, source_dialog: AddComponentDialog):
-        type_dialog = AddTypeDialog(self._view)
-        type_dialog.new_type_data_collected.connect(
-            lambda data: self._add_new_type(data, source_dialog)
-        )
-        type_dialog.exec_()
+        type_controller = TypeController(self._view, self._app_path)
+        was_changed = type_controller.open_add_type_dialog()
+        if was_changed:
+            source_dialog.refresh_type_list()
+            self.load_inventory_data()
 
     def handle_manage_types(self):
-        type_controller = TypeController(self._view)
-        type_controller.open_add_type_dialog()
+        type_controller = TypeController(self._view, self._app_path)
+        was_changed = type_controller.open_add_type_dialog()
+        if was_changed:
+            self.load_inventory_data()
 
     def handle_options(self):
         options_controller = OptionsController(self._view, self._inventories)
