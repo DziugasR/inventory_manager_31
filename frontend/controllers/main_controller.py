@@ -18,6 +18,7 @@ from backend.models_custom import Inventory
 from backend.inventory import get_all_components, add_component, remove_component_quantity, get_component_by_id
 from backend.exceptions import *
 from backend.test_data_generator import generate_random_components
+from frontend.ui.transfer_dialog import TransferDialog
 
 
 class MainController(QObject):
@@ -51,6 +52,8 @@ class MainController(QObject):
         self._view.details_requested.connect(self.open_details_dialog)
         self._view.duplicate_requested.connect(self.handle_duplicate_component)
         self._view.type_filter_changed.connect(self.handle_type_filter_change)
+        self._view.menu_bar_handler.transfer_components_action.triggered.connect(self.handle_open_transfer_dialog)
+        self._view.menu_bar_handler.add_random_action.triggered.connect(self.handle_add_random_components)
 
         # Menu Bar Connections
         self._view.menu_bar_handler.new_inventory_action.triggered.connect(self.handle_new_inventory)
@@ -91,6 +94,104 @@ class MainController(QObject):
             self._view.deselect_all_items()
         else:
             self._view.select_all_items()
+
+    def handle_open_transfer_dialog(self):
+        """Opens the dialog to transfer selected components."""
+        selected_ids = self._view.get_checked_ids()
+        if not selected_ids:
+            self._show_message("Selection Error", "Please select one or more components to transfer.", "warning")
+            return
+
+        # Get all inventories EXCEPT the current one
+        destination_inventories = [inv for inv in self._inventories if inv.id != self._active_inventory.id]
+        if not destination_inventories:
+            self._show_message("Action Not Possible", "There are no other inventories to transfer components to.",
+                               "warning")
+            return
+
+        try:
+            # Fetch the full component objects for the selected IDs
+            selected_components = [get_component_by_id(cid) for cid in selected_ids]
+            selected_components = [c for c in selected_components if c is not None]
+
+            dialog = TransferDialog(selected_components, destination_inventories, self._view)
+            dialog.transfer_requested.connect(self._perform_transfer)
+            dialog.exec_()
+
+        except Exception as e:
+            self._show_message("Error", f"Could not prepare for transfer: {e}", "critical")
+
+    # --- ADDED: The core logic for performing the database operations ---
+    def _perform_transfer(self, destination_inventory: Inventory, transfer_data: dict):
+        """
+        Handles the multi-step process of transferring components between databases.
+        `transfer_data` is a dict of {component_id: quantity_to_transfer}
+        """
+        source_inventory = self._active_inventory
+        if not source_inventory: return
+
+        original_db_url = f"sqlite:///{source_inventory.db_path if os.path.isabs(source_inventory.db_path) else os.path.join(self._app_path, source_inventory.db_path)}"
+
+        success_count = 0
+        fail_count = 0
+        messages = []
+
+        try:
+            for component_id, quantity in transfer_data.items():
+                try:
+                    # 1. Get full source component details
+                    source_component = get_component_by_id(component_id)
+                    if not source_component:
+                        raise ComponentNotFoundError(f"ID {component_id} not found in source.")
+
+                    # 2. Remove quantity from source inventory
+                    inventory.remove_component_quantity(component_id, quantity)
+
+                    # 3. Switch to destination DB
+                    dest_db_path = destination_inventory.db_path if os.path.isabs(
+                        destination_inventory.db_path) else os.path.join(self._app_path, destination_inventory.db_path)
+                    database.switch_inventory_db(f"sqlite:///{dest_db_path}")
+
+                    # 4. Check if component exists in destination
+                    existing_dest_component = inventory.get_components_by_part_number(source_component.part_number)
+
+                    if existing_dest_component:
+                        # 4a. If it exists, update its quantity
+                        dest_comp = existing_dest_component[0]
+                        new_quantity = dest_comp.quantity + quantity
+                        inventory.update_component(dest_comp.id, {'quantity': new_quantity})
+                    else:
+                        # 4b. If not, create it as a new component
+                        inventory.add_component(
+                            part_number=source_component.part_number,
+                            component_type=source_component.component_type,
+                            value=source_component.value,
+                            quantity=quantity,  # Only the transferred quantity
+                            purchase_link=source_component.purchase_link,
+                            datasheet_link=source_component.datasheet_link,
+                            location=source_component.location,
+                            notes=source_component.notes
+                        )
+
+                    success_count += 1
+                    messages.append(f"- Transferred {quantity} of {source_component.part_number}")
+
+                except Exception as e:
+                    fail_count += 1
+                    part_num = source_component.part_number if 'source_component' in locals() else f"ID {component_id}"
+                    messages.append(f"- FAILED to transfer {part_num}: {e}")
+                finally:
+                    # 5. Switch back to the source DB to process the next item
+                    database.switch_inventory_db(original_db_url)
+
+        finally:
+            # 6. Ensure we are definitely back on the original DB
+            database.switch_inventory_db(original_db_url)
+            self.load_inventory_data()  # Refresh the main view
+
+            summary_message = f"Transfer complete.\n\nSucceeded: {success_count}\nFailed: {fail_count}\n\n" + "\n".join(
+                messages)
+            self._show_message("Transfer Summary", summary_message, "info" if fail_count == 0 else "warning")
 
     def _update_inventory_menu(self):
         menu = self._view.menu_bar_handler.open_inventory_menu

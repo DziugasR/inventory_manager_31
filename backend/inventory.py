@@ -125,3 +125,18 @@ def get_all_components() -> list[Component] | None:
         raise backend.exceptions.DatabaseError(f"Error fetching all components: {e}") from e
     finally:
         session.close()
+
+def get_components_by_part_number(part_number: str) -> list[Component]:
+    """
+    Finds all components that match a given part number.
+    Returns a list of Component objects.
+    """
+    session = get_session()
+    try:
+        # Use filter_by for an exact match on the part_number column
+        components = session.query(Component).filter_by(part_number=part_number).all()
+        return components
+    except Exception as e:
+        raise backend.exceptions.DatabaseError(f"Error fetching components by part number '{part_number}': {e}") from e
+    finally:
+        session.close()
