@@ -2,7 +2,10 @@ import uuid
 import json
 from sqlalchemy import Column, String, Text, UniqueConstraint
 from sqlalchemy.orm import validates
-from .models import Base
+from sqlalchemy.ext.declarative import declarative_base
+
+# Use a new Base for the config DB to keep it separate from inventory models
+Base = declarative_base()
 
 
 class Inventory(Base):
@@ -50,3 +53,12 @@ class ComponentTypeDefinition(Base):
 
     def __repr__(self):
         return f"<ComponentTypeDefinition(ui_name='{self.ui_name}', backend_id='{self.backend_id}')>"
+
+
+class Setting(Base):
+    __tablename__ = 'settings'
+    key = Column(String, primary_key=True, nullable=False)
+    value = Column(Text, nullable=True)
+
+    def __repr__(self):
+        return f"<Setting(key='{self.key}', value='{self.value}')>"

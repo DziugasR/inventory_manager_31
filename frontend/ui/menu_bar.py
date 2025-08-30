@@ -110,8 +110,9 @@ class AppMenuBar:
         help_menu.addAction(help_import_action)
 
         self.table_name_label = ElidedLabel(self.parent)
+        self.table_name_label.setObjectName("inventoryNameLabel")
         self.table_name_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.table_name_label.setStyleSheet("padding-right: 15px; padding-top: 3px; font_weight: bold ;font-style: normal; color: Black;")
+        self.table_name_label.setStyleSheet("padding-right: 15px; padding-top: 3px; font_weight: bold ;font-style: normal;")
 
         menu_bar.setCornerWidget(self.table_name_label, Qt.TopRightCorner)
 

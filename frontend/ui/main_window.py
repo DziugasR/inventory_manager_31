@@ -293,7 +293,7 @@ class InventoryUI(QMainWindow):
                 item.setTextAlignment(Qt.AlignCenter)
                 if link_url:
                     item.setText("Link")
-                    item.setForeground(QColor("blue"))
+                    item.setForeground(QColor("#569cd6"))
                     item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
                     url = QUrl(link_url)
                     if not url.scheme():

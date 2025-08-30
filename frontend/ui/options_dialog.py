@@ -2,55 +2,78 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QGroupBox, QFormLayout, QLabel,
     QLineEdit, QComboBox, QDialogButtonBox
 )
+from backend.models_custom import Inventory
 
 
 class OptionsDialog(QDialog):
-    def __init__(self, inventory_names: list[str], parent=None):
+    def __init__(self, inventories: list[Inventory], current_settings: dict, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Application Options")
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(450)
 
         self.layout = QVBoxLayout(self)
 
-        # --- Suggestions for AI/API Settings ---
+        # --- AI/API Settings ---
         api_group = QGroupBox("AI & API Settings")
         api_layout = QFormLayout()
 
-        api_key_input = QLineEdit()
-        api_key_input.setPlaceholderText("sk-...")
-        api_key_input.setEnabled(False)  # Non-functional for now
-        api_layout.addRow(QLabel("OpenAI API Key:"), api_key_input)
+        self.api_key_input = QLineEdit()
+        self.api_key_input.setEchoMode(QLineEdit.Password)
+        self.api_key_input.setPlaceholderText("Leave blank to keep current key")
+        api_layout.addRow(QLabel("OpenAI API Key:"), self.api_key_input)
 
-        model_combo = QComboBox()
-        model_combo.addItems(["gpt-4", "gpt-3.5-turbo"])
-        model_combo.setEnabled(False) # Non-functional for now
-        api_layout.addRow(QLabel("AI Model:"), model_combo)
+        self.model_combo = QComboBox()
+        self.model_combo.addItems(["gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"])
+        api_layout.addRow(QLabel("AI Model:"), self.model_combo)
 
         api_group.setLayout(api_layout)
         self.layout.addWidget(api_group)
 
-        # --- Suggestions for Application Behavior ---
+        # --- Application Behavior ---
         app_group = QGroupBox("Application Behavior")
         app_layout = QFormLayout()
 
-        theme_combo = QComboBox()
-        theme_combo.addItems(["System Default", "Light", "Dark"])
-        theme_combo.setEnabled(False) # Non-functional for now
-        app_layout.addRow(QLabel("Theme:"), theme_combo)
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItems(["System Default", "Light", "Dark"])
+        app_layout.addRow(QLabel("Theme (requires restart):"), self.theme_combo)
 
-        startup_inventory_combo = QComboBox()
-        startup_inventory_combo.addItem("Last Used Inventory")
-        startup_inventory_combo.addItems(inventory_names)
-        startup_inventory_combo.setEnabled(False) # Non-functional for now
-        app_layout.addRow(QLabel("Load on startup:"), startup_inventory_combo)
+        self.startup_inventory_combo = QComboBox()
+        app_layout.addRow(QLabel("Load on startup:"), self.startup_inventory_combo)
 
         app_group.setLayout(app_layout)
         self.layout.addWidget(app_group)
 
-        # --- OK and Cancel Buttons ---
+        # --- Buttons ---
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         self.layout.addWidget(button_box)
 
-        self.setLayout(self.layout)
+        self._inventories = inventories
+        self._populate_fields(current_settings)
+
+    def _populate_fields(self, settings: dict):
+        self.model_combo.setCurrentText(settings.get('ai_model', 'gpt-4o-mini'))
+        self.theme_combo.setCurrentText(settings.get('theme', 'System Default'))
+
+        self.startup_inventory_combo.addItem("Last Used Inventory", "last_used")
+        for inv in self._inventories:
+            self.startup_inventory_combo.addItem(inv.name, inv.id)
+
+        startup_id = settings.get('startup_inventory_id', 'last_used')
+        index = self.startup_inventory_combo.findData(startup_id)
+        if index != -1:
+            self.startup_inventory_combo.setCurrentIndex(index)
+
+    def get_data(self) -> dict:
+        """Returns the selected settings from the dialog widgets."""
+        data = {
+            'ai_model': self.model_combo.currentText(),
+            'theme': self.theme_combo.currentText(),
+            'startup_inventory_id': self.startup_inventory_combo.currentData()
+        }
+        if self.api_key_input.text():
+            data['api_key'] = self.api_key_input.text()
+        return data
+
+
