@@ -37,6 +37,7 @@ class MainController(QObject):
         self._app_path = app_path
         self._current_search_term = ""
         self._import_export_controller = ImportExportController(self._view, self)
+        self._idea_controller = None  # Attribute to hold the controller
 
         self._active_inventory: Inventory | None = None
         self._inventories: list[Inventory] = []
@@ -44,6 +45,7 @@ class MainController(QObject):
         self._connect_signals()
         self._load_initial_data()
 
+    # ... (all methods from _connect_signals to _add_new_component are unchanged) ...
     def _connect_signals(self):
         self._view.load_data_requested.connect(self.load_inventory_data)
         self._view.add_component_requested.connect(self.open_add_component_dialog)
@@ -124,7 +126,8 @@ class MainController(QObject):
             return
 
         try:
-            db_path = inventory.db_path if os.path.isabs(inventory.db_path) else os.path.join(self._app_path, inventory.db_path)
+            db_path = inventory.db_path if os.path.isabs(inventory.db_path) else os.path.join(self._app_path,
+                                                                                              inventory.db_path)
             db_url = f"sqlite:///{db_path}"
 
             database.switch_inventory_db(db_url)
@@ -243,7 +246,7 @@ class MainController(QObject):
             'api_key': self._api_key,
             'ai_model': self._openai_model,
             'startup_inventory_id': settings_manager.get_setting('startup_inventory_id', 'last_used'),
-            'theme': settings_manager.get_setting('theme', 'System Default')
+            'theme': settings_manager.get_setting('theme', 'Fusion')
         }
         options_controller = OptionsController(self._view, self._inventories, current_settings)
         if options_controller.show_dialog():
@@ -252,7 +255,8 @@ class MainController(QObject):
             new_theme = settings_manager.get_setting('theme', 'System Default')
 
             if new_theme != current_settings['theme']:
-                self._show_message("Settings Saved", "Please restart the application for the new theme to take effect.", "info")
+                self._show_message("Settings Saved", "Please restart the application for the new theme to take effect.",
+                                   "info")
             else:
                 self._show_message("Settings Saved", "Your settings have been saved.", "info")
 
@@ -273,13 +277,129 @@ class MainController(QObject):
         except (DatabaseError, Exception) as e:
             self._show_message("Error", f"An unexpected error occurred: {e}", "critical")
 
+    # --- START OF MODIFIED SECTION ---
+
     def handle_remove_components(self, component_ids: list[uuid.UUID]):
-        # ... (rest of the file is unchanged)
-        pass
+        """This method now contains the full, correct logic."""
+        success_count = 0
+        failure_count = 0
+        messages = []
+
+        if not component_ids:
+            self._show_message("Selection Error", "No components selected.", level="warning")
+            return
+
+        confirm = QMessageBox.question(
+            self._view,
+            "Confirm Removal",
+            f"You are about to interact with {len(component_ids)} selected component(s).\n"
+            "Proceed with removal quantity input for each?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes
+        )
+
+        if confirm == QMessageBox.No:
+            return
+
+        for component_id in component_ids:
+            try:
+                component = get_component_by_id(component_id)
+                if not component:
+                    messages.append(f"- ID {component_id}: Not found (already removed?).")
+                    failure_count += 1
+                    continue
+
+                current_quantity = component.quantity
+                part_number_display = component.part_number
+
+                if current_quantity <= 0:
+                    messages.append(f"- {part_number_display}: Already has quantity 0.")
+                    failure_count += 1
+                    continue
+
+                quantity_to_remove, ok = QInputDialog.getInt(
+                    self._view,
+                    "Remove Quantity",
+                    f"Component: {part_number_display}\nAvailable: {current_quantity}\nEnter quantity to remove:",
+                    value=1, min=1, max=current_quantity
+                )
+
+                if not ok:
+                    messages.append(f"- {part_number_display}: Removal cancelled.")
+                    failure_count += 1
+                    continue
+
+                remove_component_quantity(component_id, quantity_to_remove)
+                remaining = current_quantity - quantity_to_remove
+                messages.append(f"- {part_number_display}: Removed {quantity_to_remove} (Remaining: {remaining}).")
+                success_count += 1
+
+            except (InvalidQuantityError, ComponentNotFoundError, StockError, DatabaseError) as e:
+                messages.append(f"- {part_number_display}: Error - {e}")
+                failure_count += 1
+            except Exception as e:
+                messages.append(f"- {part_number_display}: Unexpected error - {e}")
+                failure_count += 1
+
+        summary_title = "Removal Summary"
+        summary_message = f"Processed {len(component_ids)} component(s):\n" \
+                          f"Successfully processed: {success_count}\n" \
+                          f"Failed/Cancelled: {failure_count}\n\nDetails:\n" + "\n".join(messages)
+
+        if failure_count > 0:
+            self._show_message(summary_title, summary_message, level="warning")
+        else:
+            self._show_message(summary_title, summary_message, level="info")
+
+        if success_count > 0:
+            self.load_inventory_data()
 
     def open_generate_ideas_dialog(self, checked_ids: list[uuid.UUID]):
-        # ... (rest of the file is unchanged)
-        pass
+        """This method now correctly creates and stores the controller."""
+        if not self._api_key or "YOUR_API_KEY" in self._api_key:
+            self._show_message(
+                "API Key Required",
+                "Please set your OpenAI API key in the 'Tools > Options' menu before using this feature.",
+                level="warning"
+            )
+            return
+
+        if not checked_ids:
+            self._show_message("Generate Ideas", "No components selected.", level="warning")
+            return
+
+        selected_components = []
+        errors = []
+        for cid in checked_ids:
+            try:
+                component = get_component_by_id(cid)
+                if component:
+                    selected_components.append(component)
+                else:
+                    errors.append(f"Could not find details for ID {cid}.")
+            except (DatabaseError, Exception) as e:
+                errors.append(f"Error fetching ID {cid}: {e}")
+
+        if errors:
+            self._show_message("Data Fetch Warning",
+                               "Could not fetch details for all components:\n" + "\n".join(errors), level="warning")
+
+        if not selected_components:
+            self._show_message("Generate Ideas", "Could not retrieve details for any selected components.",
+                               level="warning")
+            return
+
+        # --- THIS IS THE CRITICAL FIX ---
+        # Store the controller as an instance attribute to keep it alive.
+        self._idea_controller = GenerateIdeasController(
+            selected_components,
+            self._openai_model,
+            api_key=self._api_key,
+            parent=self._view
+        )
+        self._idea_controller.show()
+        # ---------------------------------
+
+    # --- END OF MODIFIED SECTION ---
 
     def open_link_in_browser(self, url: QUrl):
         if url and url.isValid():

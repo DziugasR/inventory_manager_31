@@ -5,8 +5,10 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QWidget, QHBoxLayout, QCheckBox, QStyle, QAbstractItemView, QHeaderView,
     QLineEdit
 )
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
+
+import os
 
 from .utils import load_stylesheet
 from backend.component_constants import BACKEND_TO_UI_TYPE_MAP
@@ -32,10 +34,17 @@ class InventoryUI(QMainWindow):
     DATASHEET_COL = 5
     CHECKBOX_COL = 6
 
-    def __init__(self):
+    def __init__(self, icon_path: str | None = None):
         super().__init__()
         self.setWindowTitle("Electronics Inventory Manager")
         self.setGeometry(100, 100, 950, 500)
+
+        if icon_path and os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+            print(f"INFO: Successfully set window icon from: {icon_path}")
+        else:
+            print(f"WARNING: Window icon not found at path: {icon_path}")
+
         self._checkboxes = []
         self._row_id_map = {}
         self._init_ui()

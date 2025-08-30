@@ -1,7 +1,11 @@
 import json
 import re
 import os
-from .database import get_config_session, switch_inventory_db, inventory_engine
+# --- START: MODIFIED ---
+# Instead of importing the variable, we import the module itself
+from . import database
+from .database import get_config_session, switch_inventory_db
+# --- END: MODIFIED ---
 from .models import Component, create_component_class
 from .models_custom import ComponentTypeDefinition
 from .component_constants import UI_TO_BACKEND_TYPE_MAP
@@ -42,7 +46,7 @@ class TypeManager:
         print(f"INFO: TypeManager loaded and registered {len(self.ui_to_backend_map)} total types.")
 
     def _load_hardcoded_types(self):
-        print("DEBUG: Loading hardcoded types...")
+        # ... (this method is unchanged)
         hardcoded_properties = {
             "Resistor": ["Resistance (Ω)", "Tolerance (%)"], "Capacitor": ["Capacitance (µF)", "Voltage (V)"],
             "Inductor": ["Inductance (H)", "Current Rating (A)"],
@@ -75,6 +79,7 @@ class TypeManager:
             self.type_properties[ui_name] = hardcoded_properties.get(ui_name, [])
 
     def _load_custom_types_from_db(self):
+        # ... (this method is unchanged)
         print("DEBUG: Loading custom types from DB...")
         session = get_config_session()
         try:
@@ -90,6 +95,7 @@ class TypeManager:
             session.close()
 
     def _register_all_component_classes(self):
+        # ... (this method is unchanged)
         print(f"DEBUG: Registering all {len(self.backend_to_ui_map)} component classes with factory...")
         ComponentFactory._component_types.clear()
 
@@ -108,6 +114,7 @@ class TypeManager:
         print("DEBUG: Component class registration complete.")
 
     def add_new_type(self, ui_name: str, properties: list[str]):
+        # ... (this method is unchanged)
         session = get_config_session()
         try:
             backend_id = re.sub(r'\s+', '_', ui_name.strip()).lower()
@@ -150,7 +157,13 @@ class TypeManager:
 
             backend_id_to_delete = custom_type.backend_id
             all_inventories = inventory_manager.get_all_inventories()
-            original_db_url = str(inventory_engine.url)
+
+            # --- START: MODIFIED ---
+            # Access the inventory_engine through the database module
+            if database.inventory_engine:
+                original_db_url = str(database.inventory_engine.url)
+            # --- END: MODIFIED ---
+
             total_deleted_count = 0
 
             print(f"INFO: Deleting components of type '{backend_id_to_delete}' from ALL inventories...")
@@ -165,14 +178,19 @@ class TypeManager:
             session.commit()
             print(f"INFO: Successfully deleted custom type definition '{ui_name}'.")
 
-            switch_inventory_db(original_db_url)
+            if original_db_url:
+                switch_inventory_db(original_db_url)
+
             self.load_types()
 
             msg = f"Deleted type '{ui_name}' and its {total_deleted_count} components from all inventories."
             return True, msg
         except Exception as e:
             session.rollback()
-            if original_db_url and str(inventory_engine.url) != original_db_url:
+            # --- START: MODIFIED ---
+            # Access the inventory_engine through the database module here as well
+            if original_db_url and database.inventory_engine and str(database.inventory_engine.url) != original_db_url:
+            # --- END: MODIFIED ---
                 try:
                     switch_inventory_db(original_db_url)
                     print("INFO: Restored original DB connection after an error.")
@@ -184,6 +202,7 @@ class TypeManager:
             session.close()
 
     def get_all_custom_ui_names(self):
+        # ... (this method is unchanged)
         session = get_config_session()
         try:
             custom_types = session.query(ComponentTypeDefinition).order_by(ComponentTypeDefinition.ui_name).all()
@@ -192,15 +211,19 @@ class TypeManager:
             session.close()
 
     def get_all_ui_names(self):
+        # ... (this method is unchanged)
         return sorted(list(self.ui_to_backend_map.keys()))
 
     def get_backend_id(self, ui_name):
+        # ... (this method is unchanged)
         return self.ui_to_backend_map.get(ui_name)
 
     def get_ui_name(self, backend_id):
+        # ... (this method is unchanged)
         return self.backend_to_ui_map.get(backend_id)
 
     def get_properties(self, ui_name):
+        # ... (this method is unchanged)
         return self.type_properties.get(ui_name, [])
 
 

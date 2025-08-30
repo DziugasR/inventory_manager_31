@@ -79,13 +79,18 @@ def main():
         print("CRITICAL WARNING: OPENAI_API_KEY not found in .env file or environment!")
 
     # --- Create and Show UI ---
-    view = InventoryUI()
+    icon_path = os.path.join(application_path, 'frontend', 'ui', 'assets', 'EMLogo.ico')
+    view = InventoryUI(icon_path=icon_path)
+
     controller = MainController(
         view=view,
         openai_model='gpt-4o-mini',  # Default model, will be overwritten by settings in controller
         app_path=application_path,
         api_key=api_key
     )
+
+    view.controller = controller
+
     controller.show_view()
     sys.exit(app.exec_())
 

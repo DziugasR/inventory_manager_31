@@ -43,6 +43,8 @@ class GenerateIdeasController(QObject):
     def _connect_signals(self):
         self.view.quantity_changed.connect(self._handle_quantity_change)
         self.view.generate_requested.connect(self._handle_generate_request)
+        # --- ADD THIS LINE: Connect the dialog's close signal to our cleanup method ---
+        self.view.finished.connect(self.cleanup)
 
     def _initialize_view(self):
         self.view.populate_table(self.components)
@@ -108,7 +110,14 @@ class GenerateIdeasController(QObject):
         self._worker = None
 
     def cleanup(self):
+        """This method is called when the dialog is closed."""
+        print("Controller: Cleaning up GenerateIdeasController...")
         if self._worker_thread and self._worker_thread.isRunning():
             print("Controller: Requesting worker thread to quit during cleanup...")
             self._worker_thread.quit()
-            self._worker_thread.wait(1000)
+            self._worker_thread.wait(1000) # Wait a moment for the thread to stop
+        # Ensure the view is closed and marked for deletion
+        if self.view:
+            self.view.deleteLater()
+        # Finally, mark the controller itself for deletion
+        self.deleteLater()

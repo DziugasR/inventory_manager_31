@@ -34,11 +34,12 @@ class OptionsDialog(QDialog):
         app_layout = QFormLayout()
 
         self.theme_combo = QComboBox()
-        self.theme_combo.addItems(["System Default", "Light", "Dark"])
+        self.theme_combo.addItems(["Fusion", "Light", "Dark"])
         app_layout.addRow(QLabel("Theme (requires restart):"), self.theme_combo)
 
         self.startup_inventory_combo = QComboBox()
         app_layout.addRow(QLabel("Load on startup:"), self.startup_inventory_combo)
+
 
         app_group.setLayout(app_layout)
         self.layout.addWidget(app_group)
@@ -54,7 +55,7 @@ class OptionsDialog(QDialog):
 
     def _populate_fields(self, settings: dict):
         self.model_combo.setCurrentText(settings.get('ai_model', 'gpt-4o-mini'))
-        self.theme_combo.setCurrentText(settings.get('theme', 'System Default'))
+        self.theme_combo.setCurrentText(settings.get('theme', 'Fusion'))
 
         self.startup_inventory_combo.addItem("Last Used Inventory", "last_used")
         for inv in self._inventories:

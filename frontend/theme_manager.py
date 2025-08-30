@@ -4,13 +4,12 @@ import os
 def get_stylesheet(theme_name: str) -> str:
     """
     Loads and returns the stylesheet content for a given theme name.
-    Returns an empty string if the theme is 'System Default' or not found.
     """
     if theme_name.lower() == 'system default':
-        return ""
+        theme_name = 'Fusion'
 
     filename = f"{theme_name.lower()}.qss"
-    # This assumes that this file is in 'frontend/' and the styles are in 'frontend/ui/styles/'
+
     current_dir = os.path.dirname(__file__)
     style_path = os.path.join(current_dir, 'ui', 'styles', filename)
 
@@ -19,7 +18,7 @@ def get_stylesheet(theme_name: str) -> str:
         return ""
 
     try:
-        with open(style_path, "r", encoding='utf-8') as f:
+        with open(style_path, "r") as f:
             return f.read()
     except Exception as e:
         print(f"ERROR: Could not load stylesheet '{filename}': {e}")

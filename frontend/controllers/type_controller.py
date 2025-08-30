@@ -51,8 +51,8 @@ class TypeController(QObject):
             self._parent_view,
             'Confirm Deletion',
             f"Are you sure you want to delete the type '{ui_name}'?\n\n"
-            f"<b>WARNING:</b> This will permanently delete <u>all components</u> of this type "
-            f"from <strong>ALL</strong> inventories. This action cannot be undone.",
+            f"WARNING: This will permanently delete all components of this type "
+            f"from ALL inventories. This action cannot be undone.",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
