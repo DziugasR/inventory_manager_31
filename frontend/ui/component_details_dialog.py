@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QLineEdit,
-    QDialogButtonBox, QLabel, QSpinBox, QGroupBox
+    QDialogButtonBox, QLabel, QSpinBox, QGroupBox, QTextEdit
 )
 from backend.models import Component
 
@@ -32,6 +32,11 @@ class ComponentDetailsDialog(QDialog):
         main_layout.addRow(QLabel("Quantity:"), self.quantity_input)
         main_layout.addRow(QLabel("Location:"), self.location_input)
 
+        notes_group = QGroupBox("Notes")
+        notes_layout = QVBoxLayout(notes_group)
+        self.notes_input = QTextEdit()
+        notes_layout.addWidget(self.notes_input)
+
         # --- Dynamic Property Fields ---
         props_group = QGroupBox("Properties")
         self.props_layout = QFormLayout(props_group)
@@ -56,6 +61,7 @@ class ComponentDetailsDialog(QDialog):
         self.layout.addWidget(main_group)
         self.layout.addWidget(props_group)
         self.layout.addWidget(links_group)
+        self.layout.addWidget(notes_group)
         self.layout.addWidget(button_box)
 
     def _parse_value_string(self) -> dict:
@@ -77,6 +83,7 @@ class ComponentDetailsDialog(QDialog):
         self.location_input.setText(self.component.location or "")
         self.purchase_link_input.setText(self.component.purchase_link or "")
         self.datasheet_link_input.setText(self.component.datasheet_link or "")
+        self.notes_input.setPlainText(self.component.notes or "")
 
         value_data = self._parse_value_string()
         for prop_name, prop_input in self.property_inputs.items():
@@ -96,5 +103,6 @@ class ComponentDetailsDialog(QDialog):
             "location": self.location_input.text().strip(),
             "purchase_link": self.purchase_link_input.text().strip(),
             "datasheet_link": self.datasheet_link_input.text().strip(),
-            "value": ", ".join(value_parts)
+            "value": ", ".join(value_parts),
+            "notes": self.notes_input.toPlainText().strip()
         }

@@ -24,7 +24,7 @@ QPushButton {
     border: 1px solid #646464;
     padding: 5px 15px;
     border-radius: 3px;
-    color: #dcdcdc; /* Added for consistency */
+    color: #dcdcdc;
 }
 QPushButton:hover {
     background-color: #5a5d5f;
@@ -72,9 +72,10 @@ QMenu::item:selected {
     background-color: #0d618c;
 }
 
-/* FIX: Make the inventory name in the top-right corner visible */
+/* FIX: Make the inventory name in the top-right corner visible and transparent */
 #inventoryNameLabel {
     color: #dcdcdc;
+    background-color: transparent; /* This is the fix */
 }
 
 /* FIX: Improve checkbox visibility in the table */
@@ -94,7 +95,7 @@ QTableWidget QCheckBox::indicator:disabled {
     border: 1px solid #4a4a4a;
 }
 
-/* --- REFACTORED: New Custom Button Styles --- */
+/* --- REFACTORED: Custom Button Styles --- */
 QPushButton#addButton {
     font-size: 13px;
     font-weight: bold;

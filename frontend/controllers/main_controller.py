@@ -49,6 +49,7 @@ class MainController(QObject):
         self._view.selection_changed.connect(self.on_selection_changed)
         self._view.component_data_updated.connect(self.handle_inline_update)
         self._view.details_requested.connect(self.open_details_dialog)
+        self._view.duplicate_requested.connect(self.handle_duplicate_component)
         self._view.type_filter_changed.connect(self.handle_type_filter_change)
 
         # Menu Bar Connections
@@ -222,13 +223,41 @@ class MainController(QObject):
 
     def _add_new_component(self, component_data: dict):
         try:
-            add_component(**component_data)
+            add_component(
+                part_number=component_data['part_number'],
+                component_type=component_data['component_type'],
+                value=component_data['value'],
+                quantity=component_data['quantity'],
+                purchase_link=component_data.get('purchase_link'),
+                datasheet_link=component_data.get('datasheet_link'),
+                location=component_data.get('location'),
+                notes=component_data.get('notes')  # Pass notes
+            )
             self._show_message("Success", f"Component '{component_data['part_number']}' added.", "info")
             self.load_inventory_data()
         except (DuplicateComponentError, InvalidQuantityError, InvalidInputError) as e:
             self._show_message("Input Error", str(e), "warning")
         except (DatabaseError, Exception) as e:
             self._show_message("Error", f"An unexpected error occurred: {e}", "critical")
+
+    def handle_duplicate_component(self, component_id: uuid.UUID):
+        """Handles the component duplication workflow."""
+        try:
+            component_to_duplicate = get_component_by_id(component_id)
+            if not component_to_duplicate:
+                raise ComponentNotFoundError("Component to duplicate was not found.")
+
+            # Create the dialog and pre-fill it with data
+            dialog = AddComponentDialog(self._view)
+            dialog.populate_from_component(component_to_duplicate)
+
+            # The dialog's existing signal will trigger _add_new_component if accepted
+            dialog.component_data_collected.connect(self._add_new_component)
+            dialog.manage_types_requested.connect(self.open_manage_types_dialog)
+            dialog.exec_()
+
+        except (DatabaseError, ComponentNotFoundError) as e:
+            self._show_message("Error", f"Could not duplicate component: {e}", "critical")
 
     def handle_inline_update(self, component_id: uuid.UUID, data: dict):
         try:

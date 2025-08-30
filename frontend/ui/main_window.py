@@ -2,7 +2,7 @@ import uuid
 from PyQt5.QtWidgets import (
     QMainWindow, QTableWidget, QTableWidgetItem, QPushButton,
     QVBoxLayout, QWidget, QHBoxLayout, QCheckBox, QStyle, QAbstractItemView, QHeaderView,
-    QLineEdit, QMenu, QComboBox, QLabel
+    QLineEdit, QMenu, QComboBox, QLabel, QApplication
 )
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtCore import QUrl, Qt, pyqtSignal
@@ -25,6 +25,7 @@ class InventoryUI(QMainWindow):
     component_data_updated = pyqtSignal(uuid.UUID, dict)
     details_requested = pyqtSignal(uuid.UUID)
     type_filter_changed = pyqtSignal(str)
+    duplicate_requested = pyqtSignal(uuid.UUID)
 
     # --- Column Constants ---
     PART_NUMBER_COL = 0
@@ -133,10 +134,25 @@ class InventoryUI(QMainWindow):
 
         menu = QMenu()
         details_action = menu.addAction("More Details...")
+        duplicate_action = menu.addAction("Duplicate Component")
+        menu.addSeparator()
+        copy_pn_action = menu.addAction("Copy Part Number")
+        copy_val_action = menu.addAction("Copy Value")
+
         action = menu.exec_(self.table.mapToGlobal(position))
 
         if action == details_action:
             self.details_requested.emit(component_id)
+        elif action == duplicate_action:
+            self.duplicate_requested.emit(component_id)
+        elif action == copy_pn_action:
+            pn_item = self.table.item(item.row(), self.PART_NUMBER_COL)
+            if pn_item:
+                QApplication.clipboard().setText(pn_item.text())
+        elif action == copy_val_action:
+            val_item = self.table.item(item.row(), self.VALUE_COL)
+            if val_item:
+                QApplication.clipboard().setText(val_item.text())
 
     def _handle_double_click(self, item: QTableWidgetItem):
         component_id = self.get_id_for_row(item.row())

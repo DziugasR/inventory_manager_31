@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, Integer, String, UUID
+from sqlalchemy import Column, Integer, String, UUID, Text
 from sqlalchemy.ext.declarative import declarative_base
 from abc import abstractmethod
 
@@ -16,6 +16,7 @@ class Component(Base):
     purchase_link = Column(String, nullable=True)
     datasheet_link = Column(String, nullable=True)
     location = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
 
     __mapper_args__ = {
         "polymorphic_on": component_type,

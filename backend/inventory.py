@@ -11,7 +11,9 @@ def add_component(
         quantity: int,
         purchase_link: str | None,
         datasheet_link: str | None,
-        location: str | None
+        location: str | None,
+        notes: str | None
+
 ) -> Component | None:
     if not part_number:
         raise backend.exceptions.InvalidInputError("Part number cannot be empty.")
@@ -27,11 +29,13 @@ def add_component(
             quantity=quantity,
             purchase_link=purchase_link,
             datasheet_link=datasheet_link,
-            location=location
+            location=location,
+            notes = notes
         )
         session.add(component)
         session.commit()
         return component
+
     except Exception as e:
         session.rollback()
         if isinstance(e, (backend.exceptions.ComponentError, ValueError)):

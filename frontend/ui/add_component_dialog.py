@@ -1,10 +1,11 @@
 from PyQt5.QtWidgets import (
     QDialog, QFormLayout, QLineEdit, QComboBox, QSpinBox,
-    QDialogButtonBox, QLabel, QVBoxLayout, QMessageBox, QPushButton, QHBoxLayout
+    QDialogButtonBox, QLabel, QVBoxLayout, QMessageBox, QPushButton, QHBoxLayout, QTextEdit
 )
 from PyQt5.QtCore import pyqtSignal, QObject
 from backend.type_manager import type_manager
 from backend.exceptions import InvalidInputError
+from backend.models import Component
 
 class AddComponentDialog(QDialog):
     component_data_collected = pyqtSignal(dict)
@@ -15,22 +16,27 @@ class AddComponentDialog(QDialog):
         self.setWindowTitle("Add New Component")
         self.layout = QVBoxLayout(self)
         self.form_layout = QFormLayout()
+
         type_layout = QHBoxLayout()
         self.type_input = QComboBox(self)
         self.type_input.addItems(type_manager.get_all_ui_names())
         self.type_input.currentTextChanged.connect(self.update_fields)
         self.manage_types_button = QPushButton("Manage Types...")
         self.manage_types_button.clicked.connect(lambda: self.manage_types_requested.emit(self))
+
         type_layout.addWidget(self.type_input)
         type_layout.addWidget(self.manage_types_button)
         self.form_layout.addRow("Type:", type_layout)
         self.part_number_input = QLineEdit(self)
+
         self.form_layout.addRow("Part Number:", self.part_number_input)
         self.dynamic_fields = {}
+
         self.quantity_input = QSpinBox(self)
         self.quantity_input.setRange(1, 10000)
         self.quantity_input.setValue(1)
         self.form_layout.addRow("Quantity:", self.quantity_input)
+
         self.purchase_link_input = QLineEdit(self)
         self.form_layout.addRow("Purchase Link:", self.purchase_link_input)
         self.datasheet_link_input = QLineEdit(self)
@@ -38,11 +44,19 @@ class AddComponentDialog(QDialog):
         self.location_input = QLineEdit()
         self.location_input.setPlaceholderText("e.g., Drawer A5, Resistor Box #2")
         self.form_layout.addRow(QLabel("Location:"), self.location_input)
+
+        self.notes_input = QTextEdit()
+        self.notes_input.setPlaceholderText("Enter any personal notes about this component...")
+        self.notes_input.setFixedHeight(80)
+        self.form_layout.addRow("Notes:", self.notes_input)
+
         self._create_dynamic_fields()
         self.layout.addLayout(self.form_layout)
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+
         self.button_box.accepted.connect(self.handle_accept)
         self.button_box.rejected.connect(self.reject)
+
         self.layout.addWidget(self.button_box)
 
     def refresh_type_list(self):
@@ -140,8 +154,35 @@ class AddComponentDialog(QDialog):
             'quantity': self.quantity_input.value(),
             'purchase_link': self.purchase_link_input.text().strip(),
             'datasheet_link': self.datasheet_link_input.text().strip(),
-            'location': self.location_input.text().strip()
+            'location': self.location_input.text().strip(),
+            'notes': self.notes_input.toPlainText().strip()
         }
+
+    def populate_from_component(self, component: Component):
+        """Pre-fills the dialog's fields from an existing component object."""
+        self.setWindowTitle("Duplicate Component")
+
+        # Pre-fill type
+        ui_name = type_manager.get_ui_name(component.component_type)
+        if ui_name:
+            self.type_input.setCurrentText(ui_name)
+
+        # Pre-fill dynamic value fields
+        value_data = {k.strip(): v.strip() for p in component.value.split(',') if ':' in p for k, v in
+                      [p.split(':', 1)]}
+        for prop_name, (_, prop_input) in self.dynamic_fields.items():
+            matching_key = next((k for k in value_data if prop_name.startswith(k)), None)
+            if matching_key:
+                prop_input.setText(value_data.get(matching_key, ""))
+
+        # Pre-fill standard fields
+        self.part_number_input.clear()  # IMPORTANT: Force a new part number
+        self.part_number_input.setPlaceholderText("Enter a NEW, unique part number")
+        self.quantity_input.setValue(1)  # Default to 1 for a new entry
+        self.purchase_link_input.setText(component.purchase_link or "")
+        self.datasheet_link_input.setText(component.datasheet_link or "")
+        self.location_input.setText(component.location or "")
+        self.notes_input.setPlainText(component.notes or "")
 
     def handle_accept(self):
         if self.validate_inputs():
