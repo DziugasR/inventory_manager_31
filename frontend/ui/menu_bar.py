@@ -33,6 +33,7 @@ class AppMenuBar:
         self.open_inventory_menu = None
         self.new_inventory_action = None
         self.delete_inventory_action = None
+        self.manage_types_action = None
         self._create_menu_bar()
 
     def set_inventory_name(self, name: str):
@@ -60,7 +61,8 @@ class AppMenuBar:
 
         tools_menu = menu_bar.addMenu("&Tools")
         tools_menu.addAction(QAction("Options...", self.parent))
-        tools_menu.addAction(QAction("Manage Component Types...", self.parent))
+        self.manage_types_action = QAction("Manage Component Types...", self.parent)
+        tools_menu.addAction(self.manage_types_action)
 
         help_menu = menu_bar.addMenu("&Help")
 

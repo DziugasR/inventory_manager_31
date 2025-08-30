@@ -12,6 +12,7 @@ from frontend.ui.add_type_dialog import AddTypeDialog
 from backend.type_manager import type_manager
 from frontend.controllers.generate_ideas_controller import GenerateIdeasController
 from frontend.controllers.import_export_controller import ImportExportController
+from frontend.controllers.type_controller import TypeController
 
 from backend import database
 from backend import inventory_manager
@@ -53,6 +54,7 @@ class MainController(QObject):
 
         self._view.menu_bar_handler.new_inventory_action.triggered.connect(self.handle_new_inventory)
         self._view.menu_bar_handler.delete_inventory_action.triggered.connect(self.handle_delete_inventory)
+        self._view.menu_bar_handler.manage_types_action.triggered.connect(self.handle_manage_types)
 
     def _load_initial_data(self):
         try:
@@ -216,6 +218,10 @@ class MainController(QObject):
             lambda data: self._add_new_type(data, source_dialog)
         )
         type_dialog.exec_()
+
+    def handle_manage_types(self):
+        type_controller = TypeController(self._view)
+        type_controller.open_add_type_dialog()
 
     def _add_new_type(self, type_data: dict, source_dialog_to_refresh: AddComponentDialog):
         try:
