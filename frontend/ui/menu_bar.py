@@ -1,19 +1,24 @@
 from PyQt5.QtWidgets import QMenuBar, QAction, QMessageBox, QLabel, QMenu, QSizePolicy
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFontMetrics
 
 
-class ElidedLabel(QLabel):
+# This custom label adds the mouse wheel scrolling capability
+class ScrollableElidedLabel(QLabel):
+    wheel_up = pyqtSignal()
+    wheel_down = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._full_text = ""
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.setMinimumWidth(250)
         self.setMaximumWidth(450)
+        self.setToolTip("Scroll to switch inventories")
 
     def setText(self, text: str):
         self._full_text = text
-        self.setToolTip(text)
+        super().setToolTip(f"{text}\n(Scroll mouse wheel to switch)")
         self._update_elided_text()
 
     def resizeEvent(self, event):
@@ -24,6 +29,14 @@ class ElidedLabel(QLabel):
         metrics = QFontMetrics(self.font())
         elided = metrics.elidedText(self._full_text, Qt.ElideRight, self.width())
         super().setText(elided)
+
+    def wheelEvent(self, event):
+        """Called when the mouse wheel is used over the widget."""
+        if event.angleDelta().y() > 0:
+            self.wheel_up.emit()  # Scrolled Up
+        elif event.angleDelta().y() < 0:
+            self.wheel_down.emit()  # Scrolled Down
+        event.accept()
 
 
 class AppMenuBar:
@@ -54,76 +67,68 @@ class AppMenuBar:
     def _create_menu_bar(self):
         menu_bar = self.parent.menuBar()
 
+        # --- File Menu ---
         file_menu = menu_bar.addMenu("&File")
-
         self.new_inventory_action = QAction("New Inventory...", self.parent)
-        file_menu.addAction(self.new_inventory_action)
-
         self.open_inventory_menu = QMenu("Open Inventory", self.parent)
-        file_menu.addMenu(self.open_inventory_menu)
-
         self.delete_inventory_action = QAction("Delete Inventory...", self.parent)
-        file_menu.addAction(self.delete_inventory_action)
-
-        file_menu.addSeparator()
         exit_action = QAction("Exit", self.parent)
         exit_action.triggered.connect(self.parent.close)
+
+        file_menu.addAction(self.new_inventory_action)
+        file_menu.addMenu(self.open_inventory_menu)
+        file_menu.addAction(self.delete_inventory_action)
+        file_menu.addSeparator()
         file_menu.addAction(exit_action)
 
+        # --- Tools Menu ---
         tools_menu = menu_bar.addMenu("&Tools")
         self.options_action = QAction("Options...", self.parent)
-        tools_menu.addAction(self.options_action)
         self.manage_types_action = QAction("Manage Component Types...", self.parent)
+        self.toggle_select_action = QAction("Select All Items", self.parent)
+        self.transfer_components_action = QAction("Transfer Selected Components...", self.parent)
+        self.add_random_action = QAction("Add Random Components...", self.parent)
+
+        tools_menu.addAction(self.options_action)
         tools_menu.addAction(self.manage_types_action)
         tools_menu.addSeparator()
-        self.toggle_select_action = QAction("Select All Items", self.parent)
         tools_menu.addAction(self.toggle_select_action)
-
-        self.transfer_components_action = QAction("Transfer Selected Components...", self.parent)
         tools_menu.addAction(self.transfer_components_action)
-
-        tools_menu.addSeparator()  # A separator makes it clear these are different tools
-        self.add_random_action = QAction("Add Random Components...", self.parent)
+        tools_menu.addSeparator()
         tools_menu.addAction(self.add_random_action)
 
-        help_menu = menu_bar.addMenu("&Help")
+        # --- Inventory Name Label ---
+        self.table_name_label = ScrollableElidedLabel(self.parent)
+        self.table_name_label.setObjectName("inventoryNameLabel")
+        self.table_name_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.table_name_label.setStyleSheet(
+            "padding-right: 15px; padding-top: 3px; font-weight: bold; font-style: normal;")
+        menu_bar.setCornerWidget(self.table_name_label, Qt.TopRightCorner)
 
+        # --- Help Menu (As specified) ---
+        help_menu = menu_bar.addMenu("&Help")
         about_action = QAction("About", self.parent)
         about_action.triggered.connect(self._show_about_dialog)
         help_menu.addAction(about_action)
-
         help_menu.addSeparator()
-
         help_table_action = QAction("How to use: The Table", self.parent)
         help_table_action.triggered.connect(self._show_help_table)
         help_menu.addAction(help_table_action)
-
         help_add_action = QAction("How to use: Add Component", self.parent)
         help_add_action.triggered.connect(self._show_help_add)
         help_menu.addAction(help_add_action)
-
         help_remove_action = QAction("How to use: Remove Selected", self.parent)
         help_remove_action.triggered.connect(self._show_help_remove)
         help_menu.addAction(help_remove_action)
-
         help_generate_action = QAction("How to use: Generate Ideas", self.parent)
         help_generate_action.triggered.connect(self._show_help_generate)
         help_menu.addAction(help_generate_action)
-
         help_export_action = QAction("How to use: Export to Excel", self.parent)
         help_export_action.triggered.connect(self._show_help_export)
         help_menu.addAction(help_export_action)
-
         help_import_action = QAction("How to use: Import from Excel", self.parent)
         help_import_action.triggered.connect(self._show_help_import)
         help_menu.addAction(help_import_action)
-
-        self.table_name_label = ElidedLabel(self.parent)
-        self.table_name_label.setObjectName("inventoryNameLabel")
-        self.table_name_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.table_name_label.setStyleSheet("padding-right: 15px; padding-top: 3px; font_weight: bold ;font-style: normal;")
-
-        menu_bar.setCornerWidget(self.table_name_label, Qt.TopRightCorner)
 
     def _show_about_dialog(self):
         QMessageBox.about(

@@ -231,3 +231,11 @@ QPushButton#generateIdeasButton:pressed {
     background-color: #449d44;
     border: 1px solid #398439;
 }
+
+QToolTip {
+    background-color: #2b2b2b; /* Same as window background */
+    color: #dcdcdc; /* Light text */
+    border: 1px solid #4f5254; /* Consistent border */
+    padding: 4px;
+    border-radius: 3px;
+}

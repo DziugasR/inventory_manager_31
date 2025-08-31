@@ -17,6 +17,7 @@ class Component(Base):
     datasheet_link = Column(String, nullable=True)
     location = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
+    image_path = Column(String, nullable=True) # Relative path to image
 
     __mapper_args__ = {
         "polymorphic_on": component_type,
@@ -29,7 +30,6 @@ class Component(Base):
 
 def create_component_class(class_name, polymorphic_id, spec_format_string):
     """Dynamically creates a Component subclass."""
-
     def generated_get_specifications(self):
         return f"{self.value}"
 
@@ -37,12 +37,9 @@ def create_component_class(class_name, polymorphic_id, spec_format_string):
         "__mapper_args__": {"polymorphic_identity": polymorphic_id},
         "get_specifications": generated_get_specifications
     }
-
     internal_class_name = f"{class_name}_{polymorphic_id}"
-
     if internal_class_name in globals() or hasattr(Base, internal_class_name):
         return globals().get(internal_class_name) or getattr(Base, internal_class_name)
-
     new_class = type(internal_class_name, (Component,), class_attributes)
     globals()[internal_class_name] = new_class
     return new_class

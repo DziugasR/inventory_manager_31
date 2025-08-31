@@ -2,17 +2,18 @@ import uuid
 import os
 import re
 import sys
-from PyQt5.QtWidgets import QMessageBox, QInputDialog
+import shutil
+from PyQt5.QtWidgets import QMessageBox, QInputDialog, QFileDialog, QDialog
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtCore import QObject, QUrl
 from frontend.ui.main_window import InventoryUI
 from frontend.ui.add_component_dialog import AddComponentDialog
+from frontend.ui.component_details_dialog import ComponentDetailsDialog
 from backend.type_manager import type_manager
 from frontend.controllers.generate_ideas_controller import GenerateIdeasController
 from frontend.controllers.import_export_controller import ImportExportController
 from frontend.controllers.type_controller import TypeController
 from frontend.controllers.options_controller import OptionsController
-from frontend.controllers.details_controller import DetailsController
 from backend import database, inventory_manager, settings_manager, inventory
 from backend.models_custom import Inventory
 from backend.inventory import get_all_components, add_component, remove_component_quantity, get_component_by_id
@@ -31,7 +32,6 @@ class MainController(QObject):
         self._current_search_term = ""
         self._current_type_filter = "All Types"
         self._import_export_controller = ImportExportController(self._view, self)
-        self._details_controller = None
         self._idea_controller = None
         self._active_inventory: Inventory | None = None
         self._inventories: list[Inventory] = []
@@ -52,38 +52,35 @@ class MainController(QObject):
         self._view.details_requested.connect(self.open_details_dialog)
         self._view.duplicate_requested.connect(self.handle_duplicate_component)
         self._view.type_filter_changed.connect(self.handle_type_filter_change)
-        self._view.menu_bar_handler.transfer_components_action.triggered.connect(self.handle_open_transfer_dialog)
-        self._view.menu_bar_handler.add_random_action.triggered.connect(self.handle_add_random_components)
 
-        # Menu Bar Connections
-        self._view.menu_bar_handler.new_inventory_action.triggered.connect(self.handle_new_inventory)
-        self._view.menu_bar_handler.delete_inventory_action.triggered.connect(self.handle_delete_inventory)
-        self._view.menu_bar_handler.manage_types_action.triggered.connect(self.handle_manage_types)
-        self._view.menu_bar_handler.options_action.triggered.connect(self.handle_options)
-        self._view.menu_bar_handler.toggle_select_action.triggered.connect(self.handle_toggle_select)
-        self._view.menu_bar_handler.add_random_action.triggered.connect(self.handle_add_random_components)
+        mbar = self._view.menu_bar_handler
+        mbar.new_inventory_action.triggered.connect(self.handle_new_inventory)
+        mbar.delete_inventory_action.triggered.connect(self.handle_delete_inventory)
+        mbar.manage_types_action.triggered.connect(self.handle_manage_types)
+        mbar.options_action.triggered.connect(self.handle_options)
+        mbar.toggle_select_action.triggered.connect(self.handle_toggle_select)
+        mbar.add_random_action.triggered.connect(self.handle_add_random_components)
+        mbar.transfer_components_action.triggered.connect(self.handle_open_transfer_dialog)
+
+        label = self._view.menu_bar_handler.table_name_label
+        label.wheel_up.connect(self.handle_inventory_scroll_up)
+        label.wheel_down.connect(self.handle_inventory_scroll_down)
 
     def _load_initial_data(self):
         try:
             self._inventories = inventory_manager.get_all_inventories()
-            if not self._inventories:
-                raise DatabaseError("No inventories found.")
-
+            if not self._inventories: raise DatabaseError("No inventories found.")
             startup_id = settings_manager.get_setting('startup_inventory_id', 'last_used')
             inventory_to_load = None
             if startup_id == 'last_used':
-                last_id = settings_manager.get_setting('last_inventory_id')
-                if last_id:
+                if last_id := settings_manager.get_setting('last_inventory_id'):
                     inventory_to_load = next((inv for inv in self._inventories if inv.id == last_id), None)
             else:
                 inventory_to_load = next((inv for inv in self._inventories if inv.id == startup_id), None)
-
             self.switch_inventory(inventory_to_load or self._inventories[0])
             self._view.populate_type_filter(type_manager.get_all_ui_names())
-
         except (DatabaseError, Exception) as e:
             self._show_message("Fatal Startup Error", f"Could not load initial data: {e}", "critical")
-
         self._view._adjust_window_width()
 
     def on_selection_changed(self, has_selection: bool):
@@ -94,104 +91,6 @@ class MainController(QObject):
             self._view.deselect_all_items()
         else:
             self._view.select_all_items()
-
-    def handle_open_transfer_dialog(self):
-        """Opens the dialog to transfer selected components."""
-        selected_ids = self._view.get_checked_ids()
-        if not selected_ids:
-            self._show_message("Selection Error", "Please select one or more components to transfer.", "warning")
-            return
-
-        # Get all inventories EXCEPT the current one
-        destination_inventories = [inv for inv in self._inventories if inv.id != self._active_inventory.id]
-        if not destination_inventories:
-            self._show_message("Action Not Possible", "There are no other inventories to transfer components to.",
-                               "warning")
-            return
-
-        try:
-            # Fetch the full component objects for the selected IDs
-            selected_components = [get_component_by_id(cid) for cid in selected_ids]
-            selected_components = [c for c in selected_components if c is not None]
-
-            dialog = TransferDialog(selected_components, destination_inventories, self._view)
-            dialog.transfer_requested.connect(self._perform_transfer)
-            dialog.exec_()
-
-        except Exception as e:
-            self._show_message("Error", f"Could not prepare for transfer: {e}", "critical")
-
-    # --- ADDED: The core logic for performing the database operations ---
-    def _perform_transfer(self, destination_inventory: Inventory, transfer_data: dict):
-        """
-        Handles the multi-step process of transferring components between databases.
-        `transfer_data` is a dict of {component_id: quantity_to_transfer}
-        """
-        source_inventory = self._active_inventory
-        if not source_inventory: return
-
-        original_db_url = f"sqlite:///{source_inventory.db_path if os.path.isabs(source_inventory.db_path) else os.path.join(self._app_path, source_inventory.db_path)}"
-
-        success_count = 0
-        fail_count = 0
-        messages = []
-
-        try:
-            for component_id, quantity in transfer_data.items():
-                try:
-                    # 1. Get full source component details
-                    source_component = get_component_by_id(component_id)
-                    if not source_component:
-                        raise ComponentNotFoundError(f"ID {component_id} not found in source.")
-
-                    # 2. Remove quantity from source inventory
-                    inventory.remove_component_quantity(component_id, quantity)
-
-                    # 3. Switch to destination DB
-                    dest_db_path = destination_inventory.db_path if os.path.isabs(
-                        destination_inventory.db_path) else os.path.join(self._app_path, destination_inventory.db_path)
-                    database.switch_inventory_db(f"sqlite:///{dest_db_path}")
-
-                    # 4. Check if component exists in destination
-                    existing_dest_component = inventory.get_components_by_part_number(source_component.part_number)
-
-                    if existing_dest_component:
-                        # 4a. If it exists, update its quantity
-                        dest_comp = existing_dest_component[0]
-                        new_quantity = dest_comp.quantity + quantity
-                        inventory.update_component(dest_comp.id, {'quantity': new_quantity})
-                    else:
-                        # 4b. If not, create it as a new component
-                        inventory.add_component(
-                            part_number=source_component.part_number,
-                            component_type=source_component.component_type,
-                            value=source_component.value,
-                            quantity=quantity,  # Only the transferred quantity
-                            purchase_link=source_component.purchase_link,
-                            datasheet_link=source_component.datasheet_link,
-                            location=source_component.location,
-                            notes=source_component.notes
-                        )
-
-                    success_count += 1
-                    messages.append(f"- Transferred {quantity} of {source_component.part_number}")
-
-                except Exception as e:
-                    fail_count += 1
-                    part_num = source_component.part_number if 'source_component' in locals() else f"ID {component_id}"
-                    messages.append(f"- FAILED to transfer {part_num}: {e}")
-                finally:
-                    # 5. Switch back to the source DB to process the next item
-                    database.switch_inventory_db(original_db_url)
-
-        finally:
-            # 6. Ensure we are definitely back on the original DB
-            database.switch_inventory_db(original_db_url)
-            self.load_inventory_data()  # Refresh the main view
-
-            summary_message = f"Transfer complete.\n\nSucceeded: {success_count}\nFailed: {fail_count}\n\n" + "\n".join(
-                messages)
-            self._show_message("Transfer Summary", summary_message, "info" if fail_count == 0 else "warning")
 
     def _update_inventory_menu(self):
         menu = self._view.menu_bar_handler.open_inventory_menu
@@ -241,13 +140,11 @@ class MainController(QObject):
         if len(self._inventories) <= 1:
             self._show_message("Action Not Allowed", "Cannot delete the last inventory.", "warning")
             return
-
         names = [inv.name for inv in self._inventories]
         item, ok = QInputDialog.getItem(self._view, "Delete Inventory", "Select inventory to delete:", names, 0, False)
         if ok and item:
             to_delete = next((inv for inv in self._inventories if inv.name == item), None)
             if not to_delete: return
-
             reply = QMessageBox.question(self._view, 'Confirm Deletion', f"Permanently delete '{to_delete.name}'?",
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if reply == QMessageBox.Yes:
@@ -279,11 +176,9 @@ class MainController(QObject):
                               self._current_search_term in str(c.part_number or "").lower() or
                               self._current_search_term in str(c.value or "").lower() or
                               self._current_search_term in str(c.location or "").lower()]
-
             if self._current_type_filter != "All Types":
                 if backend_id := type_manager.get_backend_id(self._current_type_filter):
                     components = [c for c in components if c.component_type == backend_id]
-
             self._view.display_data(components)
         except (DatabaseError, Exception) as e:
             self._show_message("Error", f"Could not load data: {e}", "critical")
@@ -309,6 +204,7 @@ class MainController(QObject):
 
     def handle_options(self):
         current_settings = {
+            'api_key': self._api_key,
             'ai_model': self._openai_model,
             'startup_inventory_id': settings_manager.get_setting('startup_inventory_id', 'last_used'),
             'theme': settings_manager.get_setting('theme', 'Fusion')
@@ -324,39 +220,42 @@ class MainController(QObject):
 
     def _add_new_component(self, component_data: dict):
         try:
-            add_component(
-                part_number=component_data['part_number'],
-                component_type=component_data['component_type'],
-                value=component_data['value'],
-                quantity=component_data['quantity'],
-                purchase_link=component_data.get('purchase_link'),
-                datasheet_link=component_data.get('datasheet_link'),
-                location=component_data.get('location'),
-                notes=component_data.get('notes')  # Pass notes
-            )
+            source_image_path = component_data.pop('source_image_path', None)
+            new_component = add_component(**component_data)
+            if source_image_path and new_component:
+                self._handle_image_update(new_component.id, source_image_path)
             self._show_message("Success", f"Component '{component_data['part_number']}' added.", "info")
             self.load_inventory_data()
-        except (DuplicateComponentError, InvalidQuantityError, InvalidInputError) as e:
+        except (DuplicateComponentError, InvalidInputError) as e:
             self._show_message("Input Error", str(e), "warning")
-        except (DatabaseError, Exception) as e:
+        except Exception as e:
             self._show_message("Error", f"An unexpected error occurred: {e}", "critical")
 
-    def handle_duplicate_component(self, component_id: uuid.UUID):
-        """Handles the component duplication workflow."""
+    def _handle_image_update(self, component_id: uuid.UUID, source_path: str) -> bool:
+        if not source_path or not os.path.exists(source_path): return False
         try:
-            component_to_duplicate = get_component_by_id(component_id)
-            if not component_to_duplicate:
-                raise ComponentNotFoundError("Component to duplicate was not found.")
+            dest_dir = os.path.join(self._app_path, "assets", "component_images")
+            os.makedirs(dest_dir, exist_ok=True)
+            _, extension = os.path.splitext(source_path)
+            new_filename = f"{component_id}{extension or '.png'}"
+            dest_path = os.path.join(dest_dir, new_filename)
+            shutil.copy(source_path, dest_path)
+            relative_path = os.path.join("assets", "component_images", new_filename)
+            inventory.update_component(component_id, {"image_path": relative_path})
+            return True
+        except Exception as e:
+            self._show_message("Image Error", f"Could not save image: {e}", "critical")
+            return False
 
-            # Create the dialog and pre-fill it with data
+    def handle_duplicate_component(self, component_id: uuid.UUID):
+        try:
+            if not (component_to_duplicate := get_component_by_id(component_id)):
+                raise ComponentNotFoundError("Component not found.")
             dialog = AddComponentDialog(self._view)
-            dialog.populate_from_component(component_to_duplicate)
-
-            # The dialog's existing signal will trigger _add_new_component if accepted
+            dialog.populate_from_component(component_to_duplicate, self._app_path)
             dialog.component_data_collected.connect(self._add_new_component)
             dialog.manage_types_requested.connect(self.open_manage_types_dialog)
             dialog.exec_()
-
         except (DatabaseError, ComponentNotFoundError) as e:
             self._show_message("Error", f"Could not duplicate component: {e}", "critical")
 
@@ -369,20 +268,67 @@ class MainController(QObject):
 
     def open_details_dialog(self, component_id: uuid.UUID):
         try:
-            component = get_component_by_id(component_id)
-            if not component: raise ComponentNotFoundError("Component may have been deleted.")
-
+            if not (component := get_component_by_id(component_id)):
+                raise ComponentNotFoundError("Component may have been deleted.")
             ui_name = type_manager.get_ui_name(component.component_type)
             properties = type_manager.get_properties(ui_name)
-            self._details_controller = DetailsController(component, properties, self._view)
-            if self._details_controller.show_dialog():
+            dialog = ComponentDetailsDialog(component, properties, self._app_path, self._view)
+
+            def on_image_change_requested(comp_id_str):
+                filepath, _ = QFileDialog.getOpenFileName(dialog, "Select New Image", "", "Image Files (*.png *.jpg)")
+                if filepath and self._handle_image_update(uuid.UUID(comp_id_str), filepath):
+                    if updated_comp := get_component_by_id(uuid.UUID(comp_id_str)):
+                        dialog.component = updated_comp
+                        dialog._populate_data()
+
+            dialog.image_change_requested.connect(on_image_change_requested)
+            if dialog.exec_() == QDialog.Accepted:
+                inventory.update_component(component.id, dialog.get_data())
                 self.load_inventory_data()
         except (DatabaseError, ComponentNotFoundError) as e:
             self._show_message("Error", f"Could not open details: {e}", "critical")
 
     def handle_remove_components(self, component_ids: list[uuid.UUID]):
-        # ... (This logic is complex and remains the same)
-        pass
+        success_count, failure_count, messages = 0, 0, []
+        if not component_ids:
+            self._show_message("Selection Error", "No components selected.", "warning")
+            return
+        confirm = QMessageBox.question(self._view, "Confirm Removal",
+                                       f"You are about to interact with {len(component_ids)} component(s). Proceed?",
+                                       QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+        if confirm == QMessageBox.No: return
+        for component_id in component_ids:
+            try:
+                component = get_component_by_id(component_id)
+                if not component:
+                    messages.append(f"- ID {component_id}: Not found (already removed?).")
+                    failure_count += 1;
+                    continue
+                if component.quantity <= 0:
+                    messages.append(f"- {component.part_number}: Already has quantity 0.")
+                    failure_count += 1;
+                    continue
+                quantity_to_remove, ok = QInputDialog.getInt(self._view, "Remove Quantity",
+                                                             f"Component: {component.part_number}\nAvailable: {component.quantity}\nEnter quantity to remove:",
+                                                             1, 1, component.quantity)
+                if not ok:
+                    messages.append(f"- {component.part_number}: Removal cancelled.")
+                    failure_count += 1;
+                    continue
+                remove_component_quantity(component_id, quantity_to_remove)
+                messages.append(
+                    f"- {component.part_number}: Removed {quantity_to_remove} (Remaining: {component.quantity - quantity_to_remove}).")
+                success_count += 1
+            except (InvalidQuantityError, ComponentNotFoundError, StockError, DatabaseError) as e:
+                messages.append(f"- Error with ID {component_id}: {e}");
+                failure_count += 1
+            except Exception as e:
+                messages.append(f"- Unexpected error with ID {component_id}: {e}");
+                failure_count += 1
+        summary = f"Processed {len(component_ids)} component(s):\nSucceeded: {success_count}\nFailed/Cancelled: {failure_count}\n\nDetails:\n" + "\n".join(
+            messages)
+        self._show_message("Removal Summary", summary, "info" if failure_count == 0 else "warning")
+        if success_count > 0: self.load_inventory_data()
 
     def open_generate_ideas_dialog(self, checked_ids: list[uuid.UUID]):
         if not self._api_key or "YOUR_API_KEY" in self._api_key:
@@ -391,18 +337,72 @@ class MainController(QObject):
         if not checked_ids:
             self._show_message("Generate Ideas", "No components selected.", "warning")
             return
-
         try:
             selected_components = [get_component_by_id(cid) for cid in checked_ids if get_component_by_id(cid)]
             if not selected_components:
                 self._show_message("Generate Ideas", "Could not retrieve details for selected components.", "warning")
                 return
-
             self._idea_controller = GenerateIdeasController(selected_components, self._openai_model, self._api_key,
                                                             self._view)
             self._idea_controller.show()
         except (DatabaseError, Exception) as e:
             self._show_message("Error", f"Could not fetch component details: {e}", "critical")
+
+    def handle_open_transfer_dialog(self):
+        selected_ids = self._view.get_checked_ids()
+        if not selected_ids:
+            self._show_message("Selection Error", "Please select one or more components to transfer.", "warning")
+            return
+        destination_inventories = [inv for inv in self._inventories if inv.id != self._active_inventory.id]
+        if not destination_inventories:
+            self._show_message("Action Not Possible", "There are no other inventories to transfer to.", "warning")
+            return
+        try:
+            selected_components = [c for c in [get_component_by_id(cid) for cid in selected_ids] if c]
+            dialog = TransferDialog(selected_components, destination_inventories, self._view)
+            dialog.transfer_requested.connect(self._perform_transfer)
+            dialog.exec_()
+        except Exception as e:
+            self._show_message("Error", f"Could not prepare for transfer: {e}", "critical")
+
+    def _perform_transfer(self, destination_inventory: Inventory, transfer_data: dict):
+        if not (source_inventory := self._active_inventory): return
+        original_db_url = f"sqlite:///{source_inventory.db_path if os.path.isabs(source_inventory.db_path) else os.path.join(self._app_path, source_inventory.db_path)}"
+        success_count, fail_count, messages = 0, 0, []
+        try:
+            for component_id, quantity in transfer_data.items():
+                try:
+                    if not (source_component := get_component_by_id(component_id)):
+                        raise ComponentNotFoundError(f"ID {component_id} not found in source.")
+                    inventory.remove_component_quantity(component_id, quantity)
+                    dest_db_path = destination_inventory.db_path if os.path.isabs(
+                        destination_inventory.db_path) else os.path.join(self._app_path, destination_inventory.db_path)
+                    database.switch_inventory_db(f"sqlite:///{dest_db_path}")
+                    if existing_dest_comps := inventory.get_components_by_part_number(source_component.part_number):
+                        dest_comp = existing_dest_comps[0]
+                        inventory.update_component(dest_comp.id, {'quantity': dest_comp.quantity + quantity})
+                    else:
+                        inventory.add_component(part_number=source_component.part_number,
+                                                component_type=source_component.component_type,
+                                                value=source_component.value, quantity=quantity,
+                                                purchase_link=source_component.purchase_link,
+                                                datasheet_link=source_component.datasheet_link,
+                                                location=source_component.location, notes=source_component.notes,
+                                                image_path=source_component.image_path)
+                    success_count += 1
+                    messages.append(f"- Transferred {quantity} of {source_component.part_number}")
+                except Exception as e:
+                    fail_count += 1
+                    part_num = getattr(source_component, 'part_number', f"ID {component_id}")
+                    messages.append(f"- FAILED to transfer {part_num}: {e}")
+                finally:
+                    database.switch_inventory_db(original_db_url)
+        finally:
+            database.switch_inventory_db(original_db_url)
+            self.load_inventory_data()
+            summary = f"Transfer complete.\n\nSucceeded: {success_count}\nFailed: {fail_count}\n\n" + "\n".join(
+                messages)
+            self._show_message("Transfer Summary", summary, "info" if fail_count == 0 else "warning")
 
     def open_link_in_browser(self, url: QUrl):
         if url and url.isValid():
@@ -420,33 +420,39 @@ class MainController(QObject):
         msg_box.exec_()
 
     def handle_add_random_components(self):
-        """Prompts user and adds a specified number of random components."""
-        num, ok = QInputDialog.getInt(
-            self._view,
-            "Add Random Components",
-            "How many components would you like to add?",
-            20,  # Default value
-            1,  # Minimum value
-            1000  # Maximum value
-        )
-
+        num, ok = QInputDialog.getInt(self._view, "Add Random Components", "How many components?", 20, 1, 1000)
         if ok and num > 0:
             try:
-                self._show_message("Processing...", f"Generating and adding {num} random components...", "info")
-
-                # 1. Generate the data
-                random_data_list = generate_random_components(num)
-
-                # 2. Add each component to the database
-                for component_data in random_data_list:
+                self._show_message("Processing...", f"Generating {num} random components...", "info")
+                for component_data in generate_random_components(num):
                     inventory.add_component(**component_data)
-
-                # 3. Refresh the UI and show success
                 self.load_inventory_data()
-                self._show_message("Success", f"Successfully added {num} random components to the inventory.", "info")
-
+                self._show_message("Success", f"Added {num} random components.", "info")
             except Exception as e:
-                self._show_message("Error", f"An error occurred while adding random components:\n{e}", "critical")
+                self._show_message("Error", f"An error occurred: {e}", "critical")
+
+    def _switch_to_adjacent_inventory(self, direction: int):
+        """Helper function to switch to the next/previous inventory."""
+        if not self._inventories or not self._active_inventory:
+            return
+
+        try:
+            current_index = self._inventories.index(self._active_inventory)
+        except ValueError:
+            return  # Should not happen
+
+        new_index = (current_index + direction) % len(self._inventories)
+        next_inventory = self._inventories[new_index]
+        self.switch_inventory(next_inventory)
+
+    def handle_inventory_scroll_up(self):
+        # Scrolling up should go to the previous inventory in the list
+        self._switch_to_adjacent_inventory(-1)
+
+    def handle_inventory_scroll_down(self):
+        # Scrolling down should go to the next inventory in the list
+        self._switch_to_adjacent_inventory(1)
+
 
     def show_view(self):
         self._view.show()

@@ -80,7 +80,7 @@ def main():
 
     # --- Create and Show UI ---
     icon_path = os.path.join(application_path, 'frontend', 'ui', 'assets', 'EMLogo.ico')
-    view = InventoryUI(icon_path=icon_path)
+    view = InventoryUI(icon_path=icon_path, app_path=application_path)
 
     controller = MainController(
         view=view,
@@ -90,7 +90,6 @@ def main():
     )
 
     view.controller = controller
-
     controller.show_view()
     sys.exit(app.exec_())
 

@@ -12,8 +12,8 @@ def add_component(
         purchase_link: str | None,
         datasheet_link: str | None,
         location: str | None,
-        notes: str | None
-
+        notes: str | None,
+        image_path: str | None = None
 ) -> Component | None:
     if not part_number:
         raise backend.exceptions.InvalidInputError("Part number cannot be empty.")
@@ -22,6 +22,10 @@ def add_component(
 
     session = get_session()
     try:
+        existing = session.query(Component).filter_by(part_number=part_number).first()
+        if existing:
+            raise backend.exceptions.DuplicateComponentError(f"Component with part number '{part_number}' already exists.")
+
         component = ComponentFactory.create_component(
             component_type,
             part_number=part_number,
@@ -30,12 +34,13 @@ def add_component(
             purchase_link=purchase_link,
             datasheet_link=datasheet_link,
             location=location,
-            notes = notes
+            notes=notes,
+            image_path=image_path
         )
         session.add(component)
         session.commit()
+        session.refresh(component)
         return component
-
     except Exception as e:
         session.rollback()
         if isinstance(e, (backend.exceptions.ComponentError, ValueError)):
@@ -84,7 +89,6 @@ def delete_components_by_type(backend_id: str) -> int:
         session.close()
 
 def update_component(component_id: uuid.UUID, data: dict) -> Component:
-    """Updates a component's attributes from a dictionary of data."""
     session = get_session()
     try:
         component = session.query(Component).filter_by(id=component_id).first()
@@ -133,7 +137,6 @@ def get_components_by_part_number(part_number: str) -> list[Component]:
     """
     session = get_session()
     try:
-        # Use filter_by for an exact match on the part_number column
         components = session.query(Component).filter_by(part_number=part_number).all()
         return components
     except Exception as e:

@@ -41,12 +41,10 @@ def generate_random_components(amount: int) -> list[dict]:
         return []
 
     for _ in range(amount):
-        # 1. Select a random type
         ui_type = random.choice(all_ui_types)
         backend_id = type_manager.get_backend_id(ui_type)
         properties = type_manager.get_properties(ui_type)
 
-        # 2. Generate a random value string based on properties
         value_parts = []
         if properties:
             for prop in properties:
@@ -55,7 +53,6 @@ def generate_random_components(amount: int) -> list[dict]:
 
         value_string = ", ".join(value_parts)
 
-        # 3. Assemble the component data dictionary
         component_data = {
             'part_number': f"RAND-{str(uuid.uuid4())[:8].upper()}",
             'component_type': backend_id,
@@ -64,7 +61,8 @@ def generate_random_components(amount: int) -> list[dict]:
             'purchase_link': "",
             'datasheet_link': "",
             'location': random.choice(["Drawer A1", "Bin C4", "Shelf B2", "Project Box 7", "Loose Parts Tray"]),
-            'notes': "This is an auto-generated component."
+            'notes': "This is an auto-generated component.",
+            'image_path': None  # Explicitly set to None
         }
         component_data_list.append(component_data)
 
