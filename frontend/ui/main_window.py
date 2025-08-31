@@ -27,6 +27,7 @@ class InventoryUI(QMainWindow):
     details_requested = pyqtSignal(uuid.UUID)
     type_filter_changed = pyqtSignal(str)
     duplicate_requested = pyqtSignal(uuid.UUID)
+    delete_component_requested = pyqtSignal(uuid.UUID)
 
     # --- REFACTORED: Column Constants (Img column removed) ---
     PART_NUMBER_COL = 0
@@ -153,13 +154,22 @@ class InventoryUI(QMainWindow):
         if not item: return
         component_id = self.get_id_for_row(item.row())
         if not component_id: return
+
         menu = QMenu()
         details_action = menu.addAction("More Details...")
         duplicate_action = menu.addAction("Duplicate Component")
         menu.addSeparator()
         copy_pn_action = menu.addAction("Copy Part Number")
         copy_val_action = menu.addAction("Copy Value")
+
+        menu.addSeparator()
+        delete_action = menu.addAction("Remove Component Permanently...")
+        font = delete_action.font()
+        font.setBold(True)
+        delete_action.setFont(font)
+
         action = menu.exec_(self.table.mapToGlobal(position))
+
         if action == details_action:
             self.details_requested.emit(component_id)
         elif action == duplicate_action:
@@ -170,6 +180,8 @@ class InventoryUI(QMainWindow):
         elif action == copy_val_action:
             if val_item := self.table.item(item.row(), self.VALUE_COL): QApplication.clipboard().setText(
                 val_item.text())
+        elif action == delete_action:
+            self.delete_component_requested.emit(component_id)
 
     def _handle_double_click(self, item: QTableWidgetItem):
         if not (component_id := self.get_id_for_row(item.row())): return

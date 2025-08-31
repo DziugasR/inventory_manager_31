@@ -52,6 +52,7 @@ class MainController(QObject):
         self._view.details_requested.connect(self.open_details_dialog)
         self._view.duplicate_requested.connect(self.handle_duplicate_component)
         self._view.type_filter_changed.connect(self.handle_type_filter_change)
+        self._view.delete_component_requested.connect(self.handle_delete_component_permanently)
 
         mbar = self._view.menu_bar_handler
         mbar.new_inventory_action.triggered.connect(self.handle_new_inventory)
@@ -452,6 +453,25 @@ class MainController(QObject):
     def handle_inventory_scroll_down(self):
         # Scrolling down should go to the next inventory in the list
         self._switch_to_adjacent_inventory(1)
+
+    def handle_delete_component_permanently(self, component_id: uuid.UUID):
+        try:
+            component = get_component_by_id(component_id)
+            if not component:
+                self._show_message("Error", "Component not found. It may have already been deleted.", "warning")
+                return
+
+            confirm_msg = f"Are you sure you want to permanently delete the component '{component.part_number}'?\n\nThis action CANNOT be undone."
+            reply = QMessageBox.question(self._view, 'Confirm Permanent Deletion', confirm_msg,
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+            if reply == QMessageBox.Yes:
+                inventory.delete_component_permanently(component_id)
+                self._show_message("Success", f"Component '{component.part_number}' has been permanently removed.",
+                                   "info")
+                self.load_inventory_data()
+        except Exception as e:
+            self._show_message("Error", f"Could not permanently remove component: {e}", "critical")
 
 
     def show_view(self):
