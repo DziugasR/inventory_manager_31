@@ -19,7 +19,7 @@ QHeaderView::section {
     border: 1px solid #3c3f41;
 }
 QPushButton {
-    /* This is the general style for any buttons WITHOUT a specific ID */
+    /* General style for buttons without a specific ID */
     background-color: #4f5254;
     border: 1px solid #646464;
     padding: 5px 15px;
@@ -33,7 +33,7 @@ QPushButton:pressed {
     background-color: #646464;
 }
 QLineEdit, QComboBox {
-    padding: 2px;
+    padding: 2px 4px;
     border: 1px solid #4f5254;
     border-radius: 3px;
     background-color: #3c3f41;
@@ -45,6 +45,35 @@ QComboBox QAbstractItemView {
     background-color: #3c3f41;
     selection-background-color: #0d618c;
 }
+
+QSpinBox {
+    background-color: #3c3f41;
+    border: 1px solid #4f5254;
+    color: #dcdcdc;
+    padding: 1px 5px;
+    padding-right: 20px; /* Make space for the buttons */
+    border-radius: 4px;
+}
+/* The up and down buttons are the "grey rectangles" */
+QSpinBox::up-button, QSpinBox::down-button {
+    subcontrol-origin: border;
+    width: 20px;
+    background-color: #4f5254;
+    border-left: 1px solid #3c3f41; /* Separator line */
+    border-radius: 0px; /* Sharp corners inside the main radius */
+}
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+    background-color: #5a5d5f;
+}
+QSpinBox::up-button {
+    subcontrol-position: top right;
+    border-top-right-radius: 3px; /* Match parent rounding */
+}
+QSpinBox::down-button {
+    subcontrol-position: bottom right;
+    border-bottom-right-radius: 3px; /* Match parent rounding */
+}
+
 QGroupBox {
     border: 1px solid #4f5254;
     border-radius: 5px;
@@ -75,7 +104,7 @@ QMenu::item:selected {
 /* FIX: Make the inventory name in the top-right corner visible and transparent */
 #inventoryNameLabel {
     color: #dcdcdc;
-    background-color: transparent; /* This is the fix */
+    background-color: transparent;
 }
 
 /* FIX: Improve checkbox visibility in the table */
@@ -93,6 +122,15 @@ QTableWidget QCheckBox::indicator:checked {
 QTableWidget QCheckBox::indicator:disabled {
     background-color: #3a3a3a;
     border: 1px solid #4a4a4a;
+}
+
+/* --- Modern Tooltip Style --- */
+QToolTip {
+    background-color: #2b2b2b;
+    color: #dcdcdc;
+    border: 1px solid #4f5254;
+    padding: 4px;
+    border-radius: 3px;
 }
 
 /* --- REFACTORED: Custom Button Styles --- */
@@ -232,10 +270,27 @@ QPushButton#generateIdeasButton:pressed {
     border: 1px solid #398439;
 }
 
-QToolTip {
-    background-color: #2b2b2b; /* Same as window background */
-    color: #dcdcdc; /* Light text */
-    border: 1px solid #4f5254; /* Consistent border */
-    padding: 4px;
-    border-radius: 3px;
+QScrollBar:vertical {
+    border: none;
+    background: #2b2b2b;
+    width: 12px;
+    margin: 15px 0 15px 0;
+    border-radius: 6px;
+}
+QScrollBar::handle:vertical {
+    background: #4f5254;
+    min-height: 20px;
+    border-radius: 6px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #5a5d5f;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    height: 15px;
+}
+QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical {
+    /* Hide the default arrows */
+    background: none;
 }
